@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;background:#F5F6F8;color:#081E3F;font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+a{color:#1F4F99;text-decoration:none}
+a:hover{color:#12305E;text-decoration:underline}
+:focus-visible{outline:2px solid #1F4F99;outline-offset:2px}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</helmet>
+<div style="display:flex;min-height:100vh;background:#F5F6F8">
+
+  <!-- Sidebar -->
+  <nav aria-label="Main" style="width:232px;flex:0 0 232px;background:#081E3F;color:#FFFFFF;display:flex;flex-direction:column;padding:20px 12px;gap:4px;position:sticky;top:0;height:100vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;flex-shrink:0;gap:10px;margin:0 0 20px;padding:10px 12px;background:#FFFFFF;border-radius:14px;corner-shape:squircle">
+      <img src="./assets/fiu-panther.png" alt="FIU Panthers" style="width:40px;height:auto;flex-shrink:0;display:block">
+      <img src="./assets/saac-wordmark.png" alt="Student-Athlete Academic Center" style="min-width:0;width:100%;max-width:140px;height:auto;display:block">
+    </div>
+    <a href="#" style="position:relative;display:flex;align-items:center;gap:12px;flex-shrink:0;height:40px;padding:0 12px;border-radius:12px;background:rgba(255,255,255,0.12);color:#FFFFFF;font-weight:500;font-size:15px;text-decoration:none">
+      <span style="position:absolute;left:0;top:10px;bottom:10px;width:3px;border-radius:3px;background:#D1A644"></span>Home</a>
+    <sc-for list="{{ navMain }}" as="n" hint-placeholder-count="4">
+      <a href="{{ n.href }}" style="display:flex;align-items:center;flex-shrink:0;height:40px;padding:0 12px;border-radius:12px;color:#FFFFFF;font-size:15px;text-decoration:none;transition:background 150ms ease-out" style-hover="background:rgba(255,255,255,0.06);color:#FFFFFF;text-decoration:none">{{ n.label }}</a>
+    </sc-for>
+    <sc-if value="{{ isAdmin }}" hint-placeholder-val="{{ true }}">
+      <div style="font-size:12px;font-weight:500;color:#B9C4D6;flex-shrink:0;padding:20px 12px 6px">Admin</div>
+      <sc-for list="{{ navAdmin }}" as="n" hint-placeholder-count="7">
+        <a href="#" style="display:flex;align-items:center;flex-shrink:0;height:40px;padding:0 12px;border-radius:12px;color:#B9C4D6;font-size:15px;text-decoration:none;transition:background 150ms ease-out" style-hover="background:rgba(255,255,255,0.06);color:#FFFFFF">{{ n }}</a>
+      </sc-for>
+    </sc-if>
+    <div style="margin-top:auto;flex-shrink:0;display:flex;align-items:center;gap:10px;padding:12px;border-top:1px solid rgba(255,255,255,0.12)">
+      <div style="width:32px;height:32px;border-radius:999px;background:rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600">{{ userInitials }}</div>
+      <div style="display:flex;flex-direction:column;line-height:1.25">
+        <span style="font-size:13px;font-weight:500">{{ userName }}</span>
+        <span style="font-size:12px;color:#B9C4D6">{{ roleLabel }}</span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main -->
+  <main style="flex:1;min-width:0;padding:20px 24px 32px;display:flex;flex-direction:column;gap:16px;max-width:1440px">
+
+    <!-- Title line -->
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+      <div style="display:flex;flex-direction:column;gap:2px">
+        <h1 style="margin:0;font-size:24px;font-weight:600;letter-spacing:-0.01em">Home</h1>
+        <span style="font-size:13px;color:#5D6B82;font-variant-numeric:tabular-nums">{{ todayLabel }} · Updated {{ updatedLabel }} · refreshes every 60&nbsp;s</span>
+      </div>
+      <div aria-label="Quick actions" style="display:flex;gap:8px;flex-wrap:wrap">
+        <a href="Check%20Out.dc.html" style="display:flex;align-items:center;height:40px;padding:0 16px;border-radius:12px;background:#081E3F;color:#FFFFFF;font-weight:500;text-decoration:none;white-space:nowrap;transition:background 150ms ease-out" style-hover="background:#12305E;color:#FFFFFF;text-decoration:none">Check out</a>
+        <a href="Check%20In.dc.html" style="display:flex;align-items:center;height:40px;padding:0 16px;border-radius:12px;border:1px solid #E2E6EC;background:#FFFFFF;color:#081E3F;font-weight:500;text-decoration:none;white-space:nowrap" style-hover="border-color:#8793A6;color:#081E3F;text-decoration:none">Check in</a>
+        <a href="#" style="display:flex;align-items:center;height:40px;padding:0 16px;border-radius:12px;border:1px solid #E2E6EC;background:#FFFFFF;color:#081E3F;font-weight:500;text-decoration:none;white-space:nowrap" style-hover="border-color:#8793A6;color:#081E3F;text-decoration:none">Checked-out items</a>
+        <a href="#" style="display:flex;align-items:center;height:40px;padding:0 16px;border-radius:12px;border:1px solid #E2E6EC;background:#FFFFFF;color:#081E3F;font-weight:500;text-decoration:none;white-space:nowrap" style-hover="border-color:#8793A6;color:#081E3F;text-decoration:none">Checked-out books</a>
+        <sc-if value="{{ isAdmin }}" hint-placeholder-val="{{ true }}">
+          <a href="#" style="display:flex;align-items:center;height:40px;padding:0 16px;border-radius:12px;border:1px solid #E2E6EC;background:#FFFFFF;color:#081E3F;font-weight:500;text-decoration:none;white-space:nowrap" style-hover="border-color:#8793A6;color:#081E3F;text-decoration:none">Import students</a>
+          <a href="#" style="display:flex;align-items:center;height:40px;padding:0 16px;border-radius:12px;border:1px solid #E2E6EC;background:#FFFFFF;color:#081E3F;font-weight:500;text-decoration:none;white-space:nowrap" style-hover="border-color:#8793A6;color:#081E3F;text-decoration:none">Import books</a>
+        </sc-if>
+      </div>
+    </div>
+
+    <!-- Top row: term, scan, quick actions -->
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <label style="position:relative;display:flex;align-items:center;height:40px;padding:0 36px 0 16px;border-radius:999px;background:#FFFFFF;border:1px solid #8793A6;font-size:15px;font-weight:500;cursor:pointer">
+        <span style="color:#4A5A73;font-weight:400;margin-right:6px">Term</span>
+        <select value="{{ term }}" onChange="{{ onTerm }}" aria-label="Term" style="appearance:none;border:0;background:transparent;font:inherit;color:#081E3F;font-weight:600;cursor:pointer;padding-right:4px;outline:none">
+          <sc-for list="{{ termOptions }}" as="t" hint-placeholder-count="3">
+            <option value="{{ t.code }}">{{ t.code }}</option>
+          </sc-for>
+        </select>
+        <span aria-hidden="true" style="position:absolute;right:14px;top:50%;transform:translateY(-60%) rotate(45deg);width:7px;height:7px;border-right:1.75px solid #081E3F;border-bottom:1.75px solid #081E3F"></span>
+      </label>
+      <sc-if value="{{ isPast }}" hint-placeholder-val="{{ false }}">
+        <span style="display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 12px;border-radius:999px;background:#E0F6FA;color:#005F73;font-size:12px;font-weight:500">
+          <span style="width:6px;height:6px;border-radius:999px;background:#005F73"></span>Past term · read-only</span>
+      </sc-if>
+
+      <div style="flex:1 1 320px;min-width:260px;position:relative">
+        <span aria-hidden="true" style="position:absolute;left:18px;top:50%;width:14px;height:14px;margin-top:-9px;border:1.75px solid #5D6B82;border-radius:999px"></span>
+        <span aria-hidden="true" style="position:absolute;left:31px;top:50%;width:6px;height:1.75px;margin-top:5px;background:#5D6B82;transform:rotate(45deg)"></span>
+        <input ref="{{ scanRef }}" value="{{ scanValue }}" onChange="{{ onScanChange }}" onKeyDown="{{ onScanKey }}" aria-label="Scan or search" placeholder="Scan a tag, or type a PID or name, then press Enter" style="width:100%;height:56px;padding:0 20px 0 48px;border-radius:16px;corner-shape:squircle;border:1px solid #8793A6;background:#FFFFFF;font:inherit;font-size:17px;color:#081E3F;font-variant-numeric:tabular-nums;outline:none;transition:box-shadow 150ms ease-out" style-focus="box-shadow:0 0 0 2px #FFFFFF, 0 0 0 4px #1F4F99">
+      </div>
+
+    </div>
+
+    <sc-if value="{{ hasFeedback }}" hint-placeholder-val="{{ false }}">
+      <div role="status" style="display:flex;align-items:center;gap:12px;padding:10px 16px;border-radius:12px;background:{{ fb.bg }};color:{{ fb.fg }};font-size:15px">
+        <span style="width:22px;height:22px;flex:0 0 22px;border-radius:999px;border:1.75px solid {{ fb.fg }};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600">{{ fb.icon }}</span>
+        <span style="font-weight:600">{{ fb.word }}</span>
+        <span style="flex:1">{{ fb.text }}</span>
+        <a href="#" style="font-weight:500;color:{{ fb.fg }}">{{ fb.action }} ›</a>
+      </div>
+    </sc-if>
+
+    <!-- Tiles -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px">
+      <a href="#" style="display:flex;flex-direction:column;gap:4px;padding:18px 20px;background:#FFFFFF;border:1px solid #E2E6EC;border-radius:20px;corner-shape:squircle;box-shadow:0 1px 2px rgba(8,30,63,0.04),0 4px 16px rgba(8,30,63,0.05);color:#081E3F;text-decoration:none;transition:border-color 150ms ease-out" style-hover="border-color:#8793A6;text-decoration:none">
+        <span style="font-size:13px;font-weight:500;color:#4A5A73">People</span>
+        <span style="font-size:32px;font-weight:600;letter-spacing:-0.02em;line-height:1.15;font-variant-numeric:tabular-nums">{{ d.people }}</span>
+        <span style="font-size:13px;color:#5D6B82;font-variant-numeric:tabular-nums">{{ d.peopleSplit }}</span>
+      </a>
+      <a href="#" style="display:flex;flex-direction:column;gap:4px;padding:18px 20px;background:#FFFFFF;border:1px solid #E2E6EC;border-radius:20px;corner-shape:squircle;box-shadow:0 1px 2px rgba(8,30,63,0.04),0 4px 16px rgba(8,30,63,0.05);color:#081E3F;text-decoration:none;transition:border-color 150ms ease-out" style-hover="border-color:#8793A6;text-decoration:none">
+        <span style="font-size:13px;font-weight:500;color:#4A5A73">Books out</span>
+        <span style="font-size:32px;font-weight:600;letter-spacing:-0.02em;line-height:1.15;font-variant-numeric:tabular-nums">{{ d.booksOut }}</span>
+        <span style="font-size:13px;color:#5D6B82">open book loans</span>
+      </a>
+      <a href="#" style="display:flex;flex-direction:column;gap:4px;padding:18px 20px;background:#FFFFFF;border:1px solid #E2E6EC;border-radius:20px;corner-shape:squircle;box-shadow:0 1px 2px rgba(8,30,63,0.04),0 4px 16px rgba(8,30,63,0.05);color:#081E3F;text-decoration:none;transition:border-color 150ms ease-out" style-hover="border-color:#8793A6;text-decoration:none">
+        <span style="font-size:13px;font-weight:500;color:#4A5A73">Tech out</span>
+        <span style="font-size:32px;font-weight:600;letter-spacing:-0.02em;line-height:1.15;font-variant-numeric:tabular-nums">{{ d.techOut }}</span>
+        <span style="font-size:13px;color:#5D6B82">open tech loans</span>
+      </a>
+      <a href="#" style="display:flex;flex-direction:column;gap:4px;padding:18px 20px;background:#FFFFFF;border:1px solid #E2E6EC;border-radius:20px;corner-shape:squircle;box-shadow:0 1px 2px rgba(8,30,63,0.04),0 4px 16px rgba(8,30,63,0.05);color:#081E3F;text-decoration:none;transition:border-color 150ms ease-out" style-hover="border-color:#8793A6;text-decoration:none">
+        <span style="font-size:13px;font-weight:500;color:#4A5A73">Past due</span>
+        <span style="display:flex;align-items:center;gap:8px;font-size:32px;font-weight:600;letter-spacing:-0.02em;line-height:1.15;font-variant-numeric:tabular-nums;color:#B42318">
+          <span aria-hidden="true" style="width:20px;height:20px;border-radius:999px;border:1.75px solid #B42318;display:flex;align-items:center;justify-content:center;font-size:12px;letter-spacing:0;line-height:1">!</span>{{ d.pastDue }}</span>
+        <span style="font-size:13px;color:#B42318;font-weight:500">past due, books and tech</span>
+      </a>
+      <a href="#" style="display:flex;flex-direction:column;gap:4px;padding:18px 20px;background:#FFFFFF;border:1px solid #E2E6EC;border-radius:20px;corner-shape:squircle;box-shadow:0 1px 2px rgba(8,30,63,0.04),0 4px 16px rgba(8,30,63,0.05);color:#081E3F;text-decoration:none;transition:border-color 150ms ease-out" style-hover="border-color:#8793A6;text-decoration:none">
+        <span style="font-size:13px;font-weight:500;color:#4A5A73">Holds</span>
+        <span style="font-size:32px;font-weight:600;letter-spacing:-0.02em;line-height:1.15;font-variant-numeric:tabular-nums">{{ d.holds }}</span>
+        <span style="font-size:13px;color:#5D6B82;font-variant-numeric:tabular-nums">{{ d.holdsSplit }}</span>
+      </a>
+      <a href="#" style="display:flex;flex-direction:column;gap:4px;padding:18px 20px;background:#FFFFFF;border:1px solid #E2E6EC;border-radius:20px;corner-shape:squircle;box-shadow:0 1px 2px rgba(8,30,63,0.04),0 4px 16px rgba(8,30,63,0.05);color:#081E3F;text-decoration:none;transition:border-color 150ms ease-out;position:relative;overflow:hidden" style-hover="border-color:#8793A6;text-decoration:none">
+        <span style="position:absolute;left:20px;right:20px;top:0;height:2px;border-radius:2px;background:#D1A644"></span>
+        <span style="font-size:13px;font-weight:500;color:#4A5A73">Deadline</span>
+        <span style="font-size:32px;font-weight:600;letter-spacing:-0.02em;line-height:1.15;font-variant-numeric:tabular-nums">{{ d.deadlineBig }}</span>
+        <span style="font-size:13px;color:#5D6B82;font-variant-numeric:tabular-nums">{{ d.deadlineSub }}</span>
+      </a>
+    </div>
+
+    <!-- Row: attention + team progress -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:16px">
+      <section style="display:flex;flex-direction:column;padding:20px 20px 12px;background:#FFFFFF;border:1px solid #E2E6EC;border-radius:20px;corner-shape:squircle;box-shadow:0 1px 2px rgba(8,30,63,0.04),0 4px 16px rgba(8,30,63,0.05)">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px">
+          <h2 style="margin:0;font-size:17px;font-weight:600">Needs attention</h2>
+          <span style="font-size:13px;color:#5D6B82;font-variant-numeric:tabular-nums">{{ attentionCount }}</span>
+        </div>
+        <sc-for list="{{ attention }}" as="r" hint-placeholder-count="5">
+          <a href="#" style="display:flex;align-items:center;gap:12px;min-height:48px;padding:6px 8px;margin:0 -8px;border-radius:12px;color:#081E3F;text-decoration:none;transition:background 150ms ease-out" style-hover="background:#EAF0F8;text-decoration:none">
+            <span aria-hidden="true" style="width:32px;height:32px;flex:0 0 32px;border-radius:8px;corner-shape:squircle;background:{{ r.iconBg }};color:{{ r.iconFg }};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600">{{ r.glyph }}</span>
+            <span style="flex:1;font-size:15px;text-wrap:pretty">{{ r.text }}</span>
+            <span style="min-width:32px;height:24px;padding:0 10px;border-radius:999px;background:#F0F2F5;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums">{{ r.count }}</span>
+            <span aria-hidden="true" style="width:7px;height:7px;border-right:1.75px solid #5D6B82;border-top:1.75px solid #5D6B82;transform:rotate(45deg);margin-right:4px"></span>
+          </a>
+        </sc-for>
+        <sc-if value="{{ attentionEmpty }}" hint-placeholder-val="{{ false }}">
+          <p style="margin:8px 0;color:#4A5A73">Nothing needs you right now.</p>
+        </sc-if>
+      </section>
+
+      <section style="display:flex;flex-direction:column;gap:12px;padding:20px;background:#FFFFFF;border:1px solid #E2E6EC;border-radius:20px;corner-shape:squircle;box-shadow:0 1px 2px rgba(8,30,63,0.04),0 4px 16px rgba(8,30,63,0.05)">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <h2 style="margin:0;font-size:17px;font-weight:600">Return progress by team</h2>
+          <div style="display:flex;gap:14px;font-size:12px;color:#4A5A73">
+            <span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:999px;background:#1F4F99"></span>Returned</span>
+            <span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:999px;background:#B8861B"></span>Still out</span>
+            <span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:999px;background:#B42318"></span>Past due</span>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:minmax(110px,auto) minmax(0,1fr) auto;column-gap:14px;row-gap:10px;align-items:center">
+          <sc-for list="{{ teams }}" as="t" hint-placeholder-count="7">
+            <a href="#" style="font-size:13px;font-weight:500;color:#081E3F;white-space:nowrap">{{ t.name }}</a>
+            <div role="img" aria-label="{{ t.aria }}" style="display:flex;height:12px;border-radius:999px;background:#F0F2F5;overflow:hidden">
+              <span style="width:{{ t.retPct }};background:#1F4F99"></span>
+              <span style="width:{{ t.outPct }};background:#B8861B"></span>
+              <span style="width:{{ t.duePct }};background:#B42318"></span>
+            </div>
+            <span style="font-size:13px;color:#4A5A73;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap">{{ t.label }}</span>
+          </sc-for>
+        </div>
+        <a href="#" style="font-size:13px;font-weight:500;margin-top:auto">All 16 teams ›</a>
+      </section>
+    </div>
+
+    <!-- Row: books + inventory -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:16px">
+      <section style="display:flex;flex-direction:column;gap:14px;padding:20px;background:#FFFFFF;border:1px solid #E2E6EC;border-radius:20px;corner-shape:squircle;box-shadow:0 1px 2px rgba(8,30,63,0.04),0 4px 16px rgba(8,30,63,0.05)">
+        <div style="display:flex;align-items:baseline;justify-content:space-between">
+          <h2 style="margin:0;font-size:17px;font-weight:600">Books this term</h2>
+          <a href="#" style="font-size:13px;font-weight:500">Student books ›</a>
+        </div>
+        <sc-if value="{{ hasBookList }}" hint-placeholder-val="{{ true }}">
+          <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px">
+            <sc-for list="{{ needStates }}" as="s" hint-placeholder-count="4">
+              <a href="#" style="display:flex;flex-direction:column;gap:2px;padding:12px 14px;border-radius:12px;background:#F0F2F5;color:#081E3F;text-decoration:none" style-hover="background:#EAF0F8;text-decoration:none">
+                <span style="font-size:13px;font-weight:500;color:#4A5A73">{{ s.label }}</span>
+                <span style="font-size:24px;font-weight:600;letter-spacing:-0.02em;font-variant-numeric:tabular-nums">{{ s.value }}</span>
+              </a>
+            </sc-for>
+          </div>
+          <a href="#" style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;background:#FFF4CC;color:#5C4300;text-decoration:none" style-hover="text-decoration:none;filter:brightness(0.98)">
+            <span aria-hidden="true" style="width:22px;height:22px;flex:0 0 22px;border-radius:999px;border:1.75px solid #5C4300;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600">!</span>
+            <span style="flex:1;font-size:15px"><span style="font-weight:600;font-variant-numeric:tabular-nums">{{ d.shortTitles }} titles short</span> · {{ d.shortNeeds }} needs have no copy</span>
+            <span style="font-size:13px;font-weight:500">Shortage report ›</span>
+          </a>
+        </sc-if>
+        <sc-if value="{{ noBookList }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:20px;border-radius:12px;background:#F0F2F5;flex-wrap:wrap">
+            <span style="color:#4A5A73">No book list imported for {{ term }} yet.</span>
+            <button style="height:40px;padding:0 16px;border-radius:12px;border:0;background:#081E3F;color:#FFFFFF;font:inherit;font-weight:500;cursor:pointer">Import books</button>
+          </div>
+        </sc-if>
+      </section>
+
+      <section style="display:flex;flex-direction:column;gap:12px;padding:20px;background:#FFFFFF;border:1px solid #E2E6EC;border-radius:20px;corner-shape:squircle;box-shadow:0 1px 2px rgba(8,30,63,0.04),0 4px 16px rgba(8,30,63,0.05)">
+        <div style="display:flex;align-items:baseline;justify-content:space-between">
+          <h2 style="margin:0;font-size:17px;font-weight:600">Inventory health</h2>
+          <a href="#" style="font-size:13px;font-weight:500">Inventory ›</a>
+        </div>
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) repeat(5,minmax(0,68px));font-size:13px;font-variant-numeric:tabular-nums">
+          <span style="font-weight:500;color:#4A5A73;padding-bottom:6px;border-bottom:1px solid #E2E6EC">Tech</span>
+          <span style="font-weight:500;color:#4A5A73;text-align:right;padding-bottom:6px;border-bottom:1px solid #E2E6EC">Available</span>
+          <span style="font-weight:500;color:#4A5A73;text-align:right;white-space:nowrap;padding-bottom:6px;border-bottom:1px solid #E2E6EC">Out</span>
+          <span style="font-weight:500;color:#4A5A73;text-align:right;white-space:nowrap;padding-bottom:6px;border-bottom:1px solid #E2E6EC">In repair</span>
+          <span style="font-weight:500;color:#4A5A73;text-align:right;white-space:nowrap;padding-bottom:6px;border-bottom:1px solid #E2E6EC">Surplus</span>
+          <span style="font-weight:500;color:#4A5A73;text-align:right;padding-bottom:6px;border-bottom:1px solid #E2E6EC">Retired</span>
+          <sc-for list="{{ tech }}" as="x" hint-placeholder-count="3">
+            <a href="#" style="padding:9px 0;border-bottom:1px solid #E2E6EC;font-size:15px;color:#081E3F">{{ x.type }}</a>
+            <span style="padding:9px 0;border-bottom:1px solid #E2E6EC;text-align:right;font-size:15px">{{ x.avail }}</span>
+            <span style="padding:9px 0;border-bottom:1px solid #E2E6EC;text-align:right;font-size:15px">{{ x.out }}</span>
+            <span style="padding:9px 0;border-bottom:1px solid #E2E6EC;text-align:right;font-size:15px">{{ x.repair }}</span>
+            <span style="padding:9px 0;border-bottom:1px solid #E2E6EC;text-align:right;font-size:15px">{{ x.surplus }}</span>
+            <span style="padding:9px 0;border-bottom:1px solid #E2E6EC;text-align:right;font-size:15px;color:#5D6B82">{{ x.retired }}</span>
+          </sc-for>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <span style="font-size:13px;font-weight:500;color:#4A5A73">Book copies · {{ d.copiesTotal }}</span>
+          <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px">
+            <sc-for list="{{ copies }}" as="c" hint-placeholder-count="4">
+              <div style="display:flex;flex-direction:column;padding:10px 12px;border-radius:12px;background:#F0F2F5">
+                <span style="font-size:12px;font-weight:500;color:#4A5A73">{{ c.label }}</span>
+                <span style="font-size:17px;font-weight:600;font-variant-numeric:tabular-nums">{{ c.value }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Admin row -->
+    <sc-if value="{{ isAdmin }}" hint-placeholder-val="{{ true }}">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:16px">
+
+        <section style="display:flex;flex-direction:column;padding:20px 20px 12px;background:#FFFFFF;border:1px solid #E2E6EC;border-radius:20px;corner-shape:squircle;box-shadow:0 1px 2px rgba(8,30,63,0.04),0 4px 16px rgba(8,30,63,0.05)">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px">
+            <h2 style="margin:0;font-size:17px;font-weight:600">Recent activity</h2>
+            <a href="#" style="font-size:13px;font-weight:500">Audit log ›</a>
+          </div>
+          <sc-for list="{{ activity }}" as="a" hint-placeholder-count="6">
+            <div style="display:grid;grid-template-columns:62px minmax(0,1fr);gap:10px;padding:8px 0;border-bottom:1px solid #E2E6EC;font-size:13px">
+              <span style="color:#5D6B82;font-variant-numeric:tabular-nums">{{ a.time }}</span>
+              <span style="display:flex;flex-direction:column;min-width:0">
+                <span style="color:#081E3F;font-weight:500;font-variant-numeric:tabular-nums">{{ a.action }}</span>
+                <span style="color:#5D6B82">{{ a.user }}</span>
+              </span>
+            </div>
+          </sc-for>
+        </section>
+
+        <section style="display:flex;flex-direction:column;gap:12px;padding:20px;background:#FFFFFF;border:1px solid #E2E6EC;border-radius:20px;corner-shape:squircle;box-shadow:0 1px 2px rgba(8,30,63,0.04),0 4px 16px rgba(8,30,63,0.05)">
+          <div style="display:flex;align-items:baseline;justify-content:space-between">
+            <h2 style="margin:0;font-size:17px;font-weight:600">Imports</h2>
+            <a href="#" style="font-size:13px;font-weight:500">History ›</a>
+          </div>
+          <sc-for list="{{ imports }}" as="im" hint-placeholder-count="2">
+            <div style="display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:12px;background:#F0F2F5">
+              <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
+                <span style="font-weight:600;font-size:15px">{{ im.kind }}</span>
+                <span style="font-size:12px;color:#4A5A73;font-variant-numeric:tabular-nums">{{ im.when }} · {{ im.user }}</span>
+              </div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;font-size:12px;font-weight:500;font-variant-numeric:tabular-nums">
+                <span style="padding:2px 10px;border-radius:999px;background:#FFFFFF">{{ im.created }} created</span>
+                <span style="padding:2px 10px;border-radius:999px;background:#FFFFFF">{{ im.updated }} updated</span>
+                <span style="padding:2px 10px;border-radius:999px;background:#FFFFFF">{{ im.unchanged }} unchanged</span>
+                <span style="padding:2px 10px;border-radius:999px;background:#FFF4CC;color:#5C4300">{{ im.review }} to review</span>
+              </div>
+            </div>
+          </sc-for>
+        </section>
+
+        <section style="display:flex;flex-direction:column;gap:12px;padding:20px;background:{{ health.bg }};border:1px solid {{ health.border }};border-radius:20px;corner-shape:squircle;box-shadow:0 1px 2px rgba(8,30,63,0.04),0 4px 16px rgba(8,30,63,0.05)">
+          <div style="display:flex;align-items:baseline;justify-content:space-between">
+            <h2 style="margin:0;font-size:17px;font-weight:600;color:{{ health.fg }}">System health</h2>
+            <a href="#" style="font-size:13px;font-weight:500;color:{{ health.link }}">Backup details ›</a>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;color:{{ health.fg }}">
+            <span aria-hidden="true" style="width:22px;height:22px;flex:0 0 22px;border-radius:999px;border:1.75px solid {{ health.fg }};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600">{{ health.glyph }}</span>
+            <span style="font-weight:600">{{ health.word }}</span>
+          </div>
+          <div style="display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:16px;font-size:13px;font-variant-numeric:tabular-nums">
+            <span style="padding:8px 0;border-top:1px solid {{ health.border }};color:#4A5A73">Last backup</span>
+            <span style="padding:8px 0;border-top:1px solid {{ health.border }};text-align:right;font-weight:500;color:{{ health.fg }}">{{ health.lastBackup }}</span>
+            <span style="padding:8px 0;border-top:1px solid {{ health.border }};color:#4A5A73">Copies kept</span>
+            <span style="padding:8px 0;border-top:1px solid {{ health.border }};text-align:right;font-weight:500">Laptop + USB drive</span>
+            <span style="padding:8px 0;border-top:1px solid {{ health.border }};color:#4A5A73">Free disk space</span>
+            <span style="padding:8px 0;border-top:1px solid {{ health.border }};text-align:right;font-weight:500">182 GB of 476 GB</span>
+            <span style="padding:8px 0;border-top:1px solid {{ health.border }};color:#4A5A73">Database size</span>
+            <span style="padding:8px 0;border-top:1px solid {{ health.border }};text-align:right;font-weight:500">412 MB</span>
+            <span style="padding:8px 0;border-top:1px solid {{ health.border }};color:#4A5A73">App uptime</span>
+            <span style="padding:8px 0;border-top:1px solid {{ health.border }};text-align:right;font-weight:500">12 days, 4 h</span>
+          </div>
+        </section>
+      </div>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;role&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;ADMIN&quot;,&quot;STAFF&quot;],&quot;default&quot;:&quot;ADMIN&quot;,&quot;tsType&quot;:&quot;'ADMIN'|'STAFF'&quot;,&quot;section&quot;:&quot;Preview state&quot;},&quot;backupStale&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Preview state&quot;},&quot;noBookList&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Preview state&quot;}}">
+const TERMS = {
+  FALL26: { past:false, people:'1,012', peopleSplit:'948 athletes · 64 staff', booksOut:'2,316', techOut:'87', pastDue:'23', holds:'4', holdsSplit:'tech only · 3 pending, 1 on hold',
+    deadlineBig:'65 days', deadlineSub:'Dec 18 · 611 people hold items', shortTitles:12, shortNeeds:37, copiesTotal:'3,185',
+    needs:[['Needed','214'],['Assigned','486'],['Issued','2,316'],['Waived','58']],
+    copies:[['Available','342'],['Assigned','486'],['Out','2,316'],['Retired','41']],
+    tech:[['Laptops','14','62','3','1','4'],['Chargers','30','21','0','0','2'],['Other tech','8','4','1','0','0']],
+    teams:[['Football',212,8,204,9],['Mens Track and Field',96,4,92,3],['Womens Track and Field',88,6,82,2],['Baseball',74,2,72,4],['Softball',58,3,55,1],['Volleyball',41,1,40,2],['Womens Soccer',39,2,37,0]],
+    attention:{review:17,noReminder:9,preview:0,holds:3,short:12,notPicked:31} },
+  SPRING26: { past:true, people:'986', peopleSplit:'921 athletes · 65 staff', booksOut:'6', techOut:'1', pastDue:'7', holds:'2', holdsSplit:'tech only · 2 on hold',
+    deadlineBig:'Passed', deadlineSub:'May 8 · 5 people hold items', shortTitles:0, shortNeeds:0, copiesTotal:'3,140',
+    needs:[['Needed','0'],['Assigned','0'],['Issued','2,201'],['Waived','64']],
+    copies:[['Available','3,093'],['Assigned','0'],['Out','6'],['Retired','41']],
+    tech:[['Laptops','75','1','3','1','4'],['Chargers','51','0','0','0','2'],['Other tech','12','0','1','0','0']],
+    teams:[['Football',198,186,9,3],['Baseball',70,68,1,1],['Mens Track and Field',90,89,0,1],['Softball',54,54,0,0],['Volleyball',40,40,0,0],['Womens Soccer',36,36,0,0],['Tennis',18,18,0,0]],
+    attention:{review:0,noReminder:2,preview:0,holds:0,holdList:1,short:0,notPicked:0} },
+  SUMMER26: { past:true, people:'312', peopleSplit:'290 athletes · 22 staff', booksOut:'0', techOut:'0', pastDue:'0', holds:'0', holdsSplit:'tech only · none',
+    deadlineBig:'Passed', deadlineSub:'Aug 7 · nobody holds items', shortTitles:0, shortNeeds:0, copiesTotal:'3,140',
+    needs:[['Needed','0'],['Assigned','0'],['Issued','604'],['Waived','11']],
+    copies:[['Available','3,099'],['Assigned','0'],['Out','0'],['Retired','41']],
+    tech:[['Laptops','76','0','3','1','4'],['Chargers','51','0','0','0','2'],['Other tech','12','0','1','0','0']],
+    teams:[['Football',88,88,0,0],['Baseball',31,31,0,0],['Softball',20,20,0,0]],
+    attention:{review:0,noReminder:0,preview:0,holds:0,short:0,notPicked:0} },
+};
+const ACTIVITY = [
+  ['9:38 AM','Checked out copy C-01842','J. Ruiz'],
+  ['9:36 AM','Checked out copy C-00317','J. Ruiz'],
+  ['9:21 AM','Checked in laptop L-0044','A. Pierre'],
+  ['9:05 AM','Assigned 42 copies · Softball','M. Alvarez'],
+  ['8:52 AM','Waived need · PID 0•••••2','M. Alvarez'],
+  ['8:30 AM','Edited person · PID 6•••••8','J. Ruiz'],
+];
+const IMPORTS = [
+  { kind:'Students', when:'Oct 2, 2026', user:'M. Alvarez', created:38, updated:112, unchanged:845, review:17 },
+  { kind:'Book list · FALL26', when:'Aug 12, 2026', user:'M. Alvarez', created:214, updated:9, unchanged:0, review:6 },
+];
+const fmtNY = (d, o) => d.toLocaleString('en-US', { timeZone:'America/New_York', ...o });
+
+class Component extends DCLogic {
+  state = { term:'FALL26', scanValue:'', feedback:null, now:new Date() };
+  scanRef = React.createRef();
+  componentDidMount() {
+    this.scanRef.current && this.scanRef.current.focus();
+    this.timer = setInterval(() => this.setState({ now:new Date() }), 60000);
+    this.onFocus = () => this.setState({ now:new Date() });
+    window.addEventListener('focus', this.onFocus);
+  }
+  componentWillUnmount() { clearInterval(this.timer); window.removeEventListener('focus', this.onFocus); }
+
+  scan(raw) {
+    const v = raw.trim();
+    if (!v) return null;
+    if (/^\d{7}$/.test(v)) return { tone:'ok', word:'Found', text:`PID ${v} · 1 person`, action:'Open person page' };
+    if (/^\d{6}$/.test(v)) return { tone:'warn', word:'Check PID', text:`PIDs have 7 digits. Did you mean 0${v}?`, action:'Search 0' + v };
+    if (/^\d+$/.test(v)) return { tone:'err', word:'Not found', text:`“${v}” is not a PID or a known tag.`, action:'Add it' };
+    if (/^[A-Z]-?\d+$/i.test(v)) return { tone:'info', word:'Tags not ready', text:'Item and copy tags work once the barcode step is done.', action:'Item history' };
+    return { tone:'ok', word:'3 matches', text:`People matching “${v}”`, action:'See results' };
+  }
+
+  renderVals() {
+    const isAdmin = (this.props.role ?? 'ADMIN') === 'ADMIN';
+    const stale = !!this.props.backupStale;
+    const noBooks = !!this.props.noBookList;
+    const t = TERMS[this.state.term];
+    const a = t.attention;
+    const warn = { iconBg:'#FFF4CC', iconFg:'#5C4300', glyph:'!' };
+    const rows = [
+      isAdmin && { text:'Import rows to review', count:a.review, ...warn },
+      { text:'Past due with no reminder sent', count:a.noReminder, iconBg:'#FDECEA', iconFg:'#B42318', glyph:'!' },
+      { text:'Reminders waiting for preview', count:a.preview, ...warn },
+      { text:'Hold list ready: tech still out after the return deadline', count:a.holdList || 0, ...warn },
+      isAdmin && { text:'Holds waiting for an admin', count:a.holds, ...warn },
+      { text:'Titles short', count:noBooks ? 0 : a.short, ...warn },
+      { text:'Assignments not picked up', count:noBooks ? 0 : a.notPicked, ...warn },
+    ].filter(Boolean);
+    if (isAdmin && stale) rows.push({ text:'Backup is old — last good backup 3 days ago', count:1, iconBg:'#FDECEA', iconFg:'#B42318', glyph:'!' });
+    if (noBooks && !t.past) rows.unshift({ text:`No book list imported for ${this.state.term} yet`, count:1, ...warn });
+    const attention = rows.filter(r => r.count > 0);
+    const pct = (n, tot) => (tot ? (n / tot * 100).toFixed(1) : 0) + '%';
+    const teams = t.teams.map(([name, total, ret, out, due]) => ({
+      name, retPct:pct(ret,total), outPct:pct(out,total), duePct:pct(due,total),
+      label:`${ret} of ${total} returned`,
+      aria:`${name}: ${ret} returned, ${out} still out, ${due} past due, of ${total}`,
+    }));
+    const tones = {
+      ok:{ bg:'#E7F5EC', fg:'#176B3F', icon:'✓' }, warn:{ bg:'#FFF4CC', fg:'#5C4300', icon:'!' },
+      err:{ bg:'#FDECEA', fg:'#B42318', icon:'×' }, info:{ bg:'#E0F6FA', fg:'#005F73', icon:'i' },
+    };
+    const fb = this.state.feedback ? { ...this.state.feedback, ...tones[this.state.feedback.tone] } : {};
+    const now = this.state.now;
+    return {
+      isAdmin, roleLabel: isAdmin ? 'Admin' : 'Staff',
+      userName: isAdmin ? 'M. Alvarez' : 'J. Ruiz', userInitials: isAdmin ? 'MA' : 'JR',
+      navMain:[['Check out','Check%20Out.dc.html'],['Check in','Check%20In.dc.html'],['Checked-out items','#'],['Checked-out books','#']].map(([label,href]) => ({ label, href })),
+      navAdmin:['Imports','Inventory','Terms','Users','Audit log','Backups','Settings'],
+      todayLabel: fmtNY(now, { weekday:'long', month:'long', day:'numeric' }),
+      updatedLabel: fmtNY(now, { hour:'numeric', minute:'2-digit' }),
+      term:this.state.term, isPast:t.past,
+      termOptions:Object.keys(TERMS).map(code => ({ code })),
+      onTerm:e => this.setState({ term:e.target.value }),
+      scanRef:this.scanRef, scanValue:this.state.scanValue,
+      onScanChange:e => this.setState({ scanValue:e.target.value }),
+      onScanKey:e => { if (e.key === 'Enter') { e.preventDefault(); this.setState({ feedback:this.scan(this.state.scanValue), scanValue:'' }); } if (e.key === 'Escape') this.setState({ feedback:null }); },
+      hasFeedback:!!this.state.feedback, fb,
+      d:t,
+      attention, attentionEmpty:attention.length === 0,
+      attentionCount: attention.length ? `${attention.length} to handle` : '',
+      teams,
+      hasBookList:!noBooks, noBookList:noBooks,
+      needStates:t.needs.map(([label,value]) => ({ label, value })),
+      copies:t.copies.map(([label,value]) => ({ label, value })),
+      tech:t.tech.map(([type,avail,out,repair,surplus,retired]) => ({ type, avail, out, repair, surplus, retired })),
+      activity:ACTIVITY.map(([time,action,user]) => ({ time, action, user })),
+      imports:IMPORTS,
+      health: stale
+        ? { bg:'#FDECEA', border:'#F4C7C2', fg:'#B42318', link:'#B42318', glyph:'!', word:'Backup is old', lastBackup:'Oct 11, 2:00 AM · 3 days ago' }
+        : { bg:'#FFFFFF', border:'#E2E6EC', fg:'#081E3F', link:'#1F4F99', glyph:'✓', word:'All good', lastBackup:'Today, 2:00 AM · succeeded' },
+    };
+  }
+}
+</script>
+</body>
+</html>

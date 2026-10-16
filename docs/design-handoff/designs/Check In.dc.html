@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;background:#F5F6F8;color:#081E3F;font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+a{color:#1F4F99;text-decoration:none}
+a:hover{color:#12305E;text-decoration:underline}
+:focus-visible{outline:2px solid #1F4F99;outline-offset:2px}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</helmet>
+<div style="display:flex;min-height:100vh;background:#F5F6F8">
+
+  <nav aria-label="Main" style="width:232px;flex:0 0 232px;background:#081E3F;color:#FFFFFF;display:flex;flex-direction:column;padding:20px 12px;gap:4px;position:sticky;top:0;height:100vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;flex-shrink:0;gap:10px;margin:0 0 20px;padding:10px 12px;background:#FFFFFF;border-radius:14px;corner-shape:squircle">
+      <img src="./assets/fiu-panther.png" alt="FIU Panthers" style="width:40px;height:auto;flex-shrink:0;display:block">
+      <img src="./assets/saac-wordmark.png" alt="Student-Athlete Academic Center" style="min-width:0;width:100%;max-width:140px;height:auto;display:block">
+    </div>
+    <sc-for list="{{ nav }}" as="n" hint-placeholder-count="5">
+      <sc-if value="{{ n.active }}" hint-placeholder-val="{{ false }}">
+        <a href="{{ n.href }}" aria-current="page" style="position:relative;display:flex;align-items:center;flex-shrink:0;height:40px;padding:0 12px;border-radius:12px;background:rgba(255,255,255,0.12);color:#FFFFFF;font-weight:500;font-size:15px;text-decoration:none">
+          <span style="position:absolute;left:0;top:10px;bottom:10px;width:3px;border-radius:3px;background:#D1A644"></span>{{ n.label }}</a>
+      </sc-if>
+      <sc-if value="{{ n.idle }}" hint-placeholder-val="{{ true }}">
+        <a href="{{ n.href }}" style="display:flex;align-items:center;flex-shrink:0;height:40px;padding:0 12px;border-radius:12px;color:#FFFFFF;font-size:15px;text-decoration:none;transition:background 150ms ease-out" style-hover="background:rgba(255,255,255,0.06);text-decoration:none;color:#FFFFFF">{{ n.label }}</a>
+      </sc-if>
+    </sc-for>
+    <sc-if value="{{ isAdmin }}" hint-placeholder-val="{{ true }}">
+      <div style="font-size:12px;font-weight:500;color:#B9C4D6;flex-shrink:0;padding:20px 12px 6px">Admin</div>
+      <sc-for list="{{ navAdmin }}" as="n" hint-placeholder-count="7">
+        <a href="#" style="display:flex;align-items:center;flex-shrink:0;height:40px;padding:0 12px;border-radius:12px;color:#B9C4D6;font-size:15px;text-decoration:none;transition:background 150ms ease-out" style-hover="background:rgba(255,255,255,0.06);color:#FFFFFF;text-decoration:none">{{ n }}</a>
+      </sc-for>
+    </sc-if>
+    <div style="margin-top:auto;flex-shrink:0;display:flex;align-items:center;gap:10px;padding:12px;border-top:1px solid rgba(255,255,255,0.12)">
+      <div style="width:32px;height:32px;border-radius:999px;background:rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600">{{ userInitials }}</div>
+      <div style="display:flex;flex-direction:column;line-height:1.25">
+        <span style="font-size:13px;font-weight:500">{{ userName }}</span>
+        <span style="font-size:12px;color:#B9C4D6">{{ roleLabel }}</span>
+      </div>
+    </div>
+  </nav>
+
+  <main style="flex:1;min-width:0;padding:20px 24px 32px;display:flex;flex-direction:column;gap:16px;max-width:1440px">
+
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <h1 style="margin:0;font-size:24px;font-weight:600;letter-spacing:-0.01em">Check in</h1>
+      <span style="display:inline-flex;align-items:center;height:28px;padding:0 12px;border-radius:999px;background:#FFFFFF;border:1px solid #E2E6EC;font-size:13px;font-weight:500">FALL26 · current term</span>
+    </div>
+
+    <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">
+
+      <div style="flex:1 1 560px;min-width:0;display:flex;flex-direction:column;gap:12px">
+        <span style="font-size:15px;color:#4A5A73">Scan any copy or tech item. Its loan is found for you, no need to look up the person.</span>
+        <div style="position:relative">
+          <span aria-hidden="true" style="position:absolute;left:18px;top:50%;width:14px;height:14px;margin-top:-9px;border:1.75px solid #5D6B82;border-radius:999px"></span>
+          <span aria-hidden="true" style="position:absolute;left:31px;top:50%;width:6px;height:1.75px;margin-top:5px;background:#5D6B82;transform:rotate(45deg)"></span>
+          <input ref="{{ scanRef }}" value="{{ scanValue }}" onChange="{{ onScanChange }}" onKeyDown="{{ onScanKey }}" aria-label="Scan a tag to check in" placeholder="Scan a copy or tech tag, or a PID to see what they hold" style="width:100%;height:56px;padding:0 20px 0 48px;border-radius:16px;corner-shape:squircle;border:1px solid #8793A6;background:#FFFFFF;font:inherit;font-size:17px;color:#081E3F;font-variant-numeric:tabular-nums;outline:none;transition:box-shadow 150ms ease-out" style-focus="box-shadow:0 0 0 2px #FFFFFF, 0 0 0 4px #1F4F99">
+        </div>
+        <sc-if value="{{ showDemo }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <span style="font-size:12px;font-weight:500;color:#5D6B82;margin-right:4px">Demo scans</span>
+            <sc-for list="{{ demoScans }}" as="c" hint-placeholder-count="7">
+              <button onClick="{{ c.run }}" title="{{ c.hint }}" style="height:28px;padding:0 10px;border-radius:999px;border:1px solid #E2E6EC;background:#FFFFFF;color:#4A5A73;font:inherit;font-size:12px;font-weight:500;font-variant-numeric:tabular-nums;cursor:pointer" style-hover="border-color:#8793A6;color:#081E3F">{{ c.code }}</button>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ hasFeedback }}" hint-placeholder-val="{{ false }}">
+          <div role="status" style="display:flex;align-items:center;gap:12px;min-height:48px;padding:10px 16px;border-radius:12px;background:{{ fb.bg }};color:{{ fb.fg }}">
+            <span aria-hidden="true" style="width:22px;height:22px;flex:0 0 22px;border-radius:999px;border:1.75px solid {{ fb.fg }};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600">{{ fb.icon }}</span>
+            <span style="font-weight:600;white-space:nowrap">{{ fb.word }}</span>
+            <span style="flex:1;text-wrap:pretty">{{ fb.text }}</span>
+            <sc-if value="{{ fb.hasAction }}" hint-placeholder-val="{{ false }}">
+              <a href="#" style="font-weight:500;color:{{ fb.fg }};white-space:nowrap">{{ fb.action }} ›</a>
+            </sc-if>
+          </div>
+        </sc-if>
+
+        <section style="display:flex;flex-direction:column;background:#FFFFFF;border:1px solid #E2E6EC;border-radius:20px;corner-shape:squircle;box-shadow:0 1px 2px rgba(8,30,63,0.04),0 4px 16px rgba(8,30,63,0.05);overflow:hidden">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;padding:18px 20px 12px">
+            <h2 style="margin:0;font-size:17px;font-weight:600">Checked in this session</h2>
+            <span style="font-size:13px;color:#5D6B82;font-variant-numeric:tabular-nums">{{ sessionCount }}</span>
+          </div>
+          <sc-if value="{{ sessionEmpty }}" hint-placeholder-val="{{ true }}">
+            <p style="margin:0;padding:24px 20px 28px;border-top:1px solid #E2E6EC;color:#4A5A73">Nothing checked in yet. Scan the first item.</p>
+          </sc-if>
+          <sc-for list="{{ session }}" as="r" hint-placeholder-count="0">
+            <div style="display:flex;flex-direction:column;gap:10px;padding:12px 20px;border-top:1px solid #E2E6EC">
+              <div style="display:flex;align-items:center;gap:14px">
+                <span style="width:64px;flex:0 0 64px;font-size:13px;color:#5D6B82;font-variant-numeric:tabular-nums">{{ r.time }}</span>
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.35">
+                  <span style="font-weight:500">{{ r.title }}</span>
+                  <span style="font-size:13px;color:#5D6B82;font-variant-numeric:tabular-nums">{{ r.tag }} · {{ r.person }} · due {{ r.due }}</span>
+                </div>
+                <span style="display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:999px;background:{{ r.badgeBg }};color:{{ r.badgeFg }};font-size:12px;font-weight:500;white-space:nowrap">{{ r.badge }}</span>
+                <button onClick="{{ r.undo }}" aria-label="Undo {{ r.tag }}" style="height:40px;padding:0 12px;border:0;border-radius:12px;background:transparent;color:#1F4F99;font:inherit;font-size:13px;font-weight:500;cursor:pointer" style-hover="background:#EAF0F8">Undo</button>
+              </div>
+              <sc-if value="{{ r.isReturn }}" hint-placeholder-val="{{ true }}">
+                <div style="display:flex;gap:8px;padding-left:78px;flex-wrap:wrap">
+                  <label style="display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:500;color:#4A5A73">Condition in
+                    <select value="{{ r.cond }}" onChange="{{ r.setCond }}" style="height:40px;padding:0 12px;border-radius:12px;border:1px solid #8793A6;background:#FFFFFF;font:inherit;color:#081E3F">
+                      <option value="Good">Good</option>
+                      <option value="Fair">Fair</option>
+                      <option value="Damaged">Damaged</option>
+                    </select>
+                  </label>
+                  <label style="flex:1 1 240px;display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:500;color:#4A5A73">Notes
+                    <input value="{{ r.note }}" onChange="{{ r.setNote }}" placeholder="{{ r.notePh }}" style="height:40px;padding:0 12px;border-radius:12px;border:1px solid #8793A6;background:#FFFFFF;font:inherit;color:#081E3F;outline:none" style-focus="box-shadow:0 0 0 2px #FFFFFF, 0 0 0 4px #1F4F99">
+                  </label>
+                </div>
+              </sc-if>
+            </div>
+          </sc-for>
+        </section>
+      </div>
+
+      <aside style="flex:0 1 380px;min-width:300px;display:flex;flex-direction:column;gap:16px">
+        <section style="display:flex;flex-direction:column;gap:12px;padding:20px;background:#FFFFFF;border:1px solid #E2E6EC;border-radius:20px;corner-shape:squircle;box-shadow:0 1px 2px rgba(8,30,63,0.04),0 4px 16px rgba(8,30,63,0.05)">
+          <sc-if value="{{ noPerson }}" hint-placeholder-val="{{ true }}">
+            <span style="font-size:13px;font-weight:500;color:#4A5A73">Still out</span>
+            <span style="color:#4A5A73">After a scan, everything else that person still holds shows here, so partial returns are easy to spot.</span>
+          </sc-if>
+          <sc-if value="{{ hasPerson }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:center;gap:12px">
+              <div style="width:44px;height:44px;flex:0 0 44px;border-radius:999px;background:#EAF0F8;display:flex;align-items:center;justify-content:center;font-weight:600">{{ p.initials }}</div>
+              <div style="display:flex;flex-direction:column;line-height:1.3;min-width:0">
+                <span style="font-size:20px;font-weight:600;letter-spacing:-0.01em">{{ p.name }}</span>
+                <span style="font-size:13px;color:#4A5A73;font-variant-numeric:tabular-nums">PID {{ p.pid }} · {{ p.team }}</span>
+              </div>
+            </div>
+            <div style="display:flex;align-items:baseline;justify-content:space-between;padding-top:12px;border-top:1px solid #E2E6EC">
+              <h2 style="margin:0;font-size:17px;font-weight:600">Still out</h2>
+              <span style="font-size:13px;color:#5D6B82;font-variant-numeric:tabular-nums">{{ stillCount }}</span>
+            </div>
+            <sc-if value="{{ allBack }}" hint-placeholder-val="{{ false }}">
+              <span style="display:flex;align-items:center;gap:8px;padding:12px 14px;border-radius:12px;background:#E7F5EC;color:#176B3F;font-weight:500">✓ Everything is back. Nothing else out this term.</span>
+            </sc-if>
+            <sc-for list="{{ still }}" as="o" hint-placeholder-count="2">
+              <div style="display:flex;flex-direction:column;gap:8px;padding:10px 0;border-top:1px solid #E2E6EC">
+                <div style="display:flex;align-items:flex-start;gap:10px">
+                  <span style="flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.35">
+                    <span style="font-size:15px;font-weight:500">{{ o.title }}</span>
+                    <span style="font-size:12px;color:#5D6B82;font-variant-numeric:tabular-nums">{{ o.tag }} · due {{ o.due }}</span>
+                  </span>
+                  <sc-if value="{{ o.pastDue }}" hint-placeholder-val="{{ false }}">
+                    <span style="display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:999px;background:#FDECEA;color:#B42318;font-size:12px;font-weight:500;white-space:nowrap">! Past due</span>
+                  </sc-if>
+                </div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap">
+                  <button onClick="{{ o.checkIn }}" style="height:40px;padding:0 14px;border-radius:12px;border:1px solid #E2E6EC;background:#FFFFFF;color:#081E3F;font:inherit;font-size:13px;font-weight:500;cursor:pointer" style-hover="border-color:#8793A6">Check in</button>
+                  <button onClick="{{ o.nfr }}" style="height:40px;padding:0 14px;border-radius:12px;border:1px solid #E2E6EC;background:#FFFFFF;color:#081E3F;font:inherit;font-size:13px;font-weight:500;cursor:pointer" style-hover="border-color:#8793A6">Not for return</button>
+                  <sc-if value="{{ o.isTech }}" hint-placeholder-val="{{ false }}">
+                    <button onClick="{{ o.renew }}" style="height:40px;padding:0 14px;border:0;border-radius:12px;background:transparent;color:#1F4F99;font:inherit;font-size:13px;font-weight:500;cursor:pointer" style-hover="background:#EAF0F8">Renew</button>
+                  </sc-if>
+                </div>
+              </div>
+            </sc-for>
+            <div style="display:flex;gap:8px;padding-top:4px;flex-wrap:wrap">
+              <button style="height:40px;padding:0 14px;border-radius:12px;border:0;background:#081E3F;color:#FFFFFF;font:inherit;font-size:13px;font-weight:500;cursor:pointer" style-hover="background:#12305E">Print updated receipt</button>
+              <a href="#" style="display:flex;align-items:center;height:40px;font-size:13px;font-weight:500">Person page ›</a>
+            </div>
+          </sc-if>
+        </section>
+      </aside>
+    </div>
+  </main>
+
+  <sc-if value="{{ dialogOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closeDialog }}" style="position:fixed;inset:0;background:rgba(8,30,63,0.32);display:flex;align-items:center;justify-content:center;padding:24px;z-index:10">
+      <div role="dialog" aria-modal="true" aria-labelledby="nfr-title" onClick="{{ stop }}" style="width:100%;max-width:460px;display:flex;flex-direction:column;gap:16px;padding:28px;background:#FFFFFF;border-radius:28px;corner-shape:squircle;box-shadow:0 8px 40px rgba(8,30,63,0.18)">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <h2 id="nfr-title" style="margin:0;font-size:20px;font-weight:600">Close without a return</h2>
+          <span style="color:#4A5A73;font-size:15px">{{ dlg.title }} · {{ dlg.tag }} · {{ dlg.person }}</span>
+        </div>
+        <div role="radiogroup" aria-label="Reason" style="display:flex;flex-direction:column;gap:8px">
+          <sc-for list="{{ reasons }}" as="x" hint-placeholder-count="3">
+            <button role="radio" aria-checked="{{ x.on }}" onClick="{{ x.pick }}" style="display:flex;align-items:center;gap:12px;height:48px;padding:0 14px;border-radius:12px;border:1px solid {{ x.border }};background:{{ x.bg }};font:inherit;color:#081E3F;text-align:left;cursor:pointer">
+              <span aria-hidden="true" style="width:18px;height:18px;border-radius:999px;border:1.75px solid {{ x.dot }};display:flex;align-items:center;justify-content:center"><span style="width:8px;height:8px;border-radius:999px;background:{{ x.fill }}"></span></span>
+              <span style="display:flex;flex-direction:column;line-height:1.3">
+                <span style="font-weight:500">{{ x.label }}</span>
+              </span>
+              <span style="margin-left:auto;font-size:12px;color:#5D6B82">{{ x.hint }}</span>
+            </button>
+          </sc-for>
+        </div>
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:500;color:#4A5A73">Note
+          <input value="{{ dlgNote }}" onChange="{{ setDlgNote }}" placeholder="e.g. student kept it for spring course" style="height:40px;padding:0 12px;border-radius:12px;border:1px solid #8793A6;background:#FFFFFF;font:inherit;color:#081E3F;outline:none" style-focus="box-shadow:0 0 0 2px #FFFFFF, 0 0 0 4px #1F4F99">
+        </label>
+        <div style="display:flex;justify-content:flex-end;gap:8px">
+          <button onClick="{{ closeDialog }}" style="height:40px;padding:0 16px;border-radius:12px;border:1px solid #E2E6EC;background:#FFFFFF;color:#081E3F;font:inherit;font-weight:500;cursor:pointer">Cancel</button>
+          <sc-if value="{{ dlgReady }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ confirmNfr }}" style="height:40px;padding:0 16px;border-radius:12px;border:0;background:#081E3F;color:#FFFFFF;font:inherit;font-weight:500;cursor:pointer" style-hover="background:#12305E">Close loan</button>
+          </sc-if>
+          <sc-if value="{{ dlgNotReady }}" hint-placeholder-val="{{ true }}">
+            <button disabled="{{ true }}" style="height:40px;padding:0 16px;border-radius:12px;border:0;background:#E2E6EC;color:#5D6B82;font:inherit;font-weight:500;cursor:not-allowed">Pick a reason</button>
+          </sc-if>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;role&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;ADMIN&quot;,&quot;STAFF&quot;],&quot;default&quot;:&quot;ADMIN&quot;,&quot;tsType&quot;:&quot;'ADMIN'|'STAFF'&quot;},&quot;showDemo&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;sound&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
+const PEOPLE = {
+  '6203318': { first:'Maya', last:'Chen', team:'Softball' },
+  '6100224': { first:'Luis', last:'Ortega', team:'Baseball' },
+  '5521907': { first:'Andre', last:'Baptiste', team:'Staff (tutor)' },
+  '0412345': { first:'Jordan', last:'Reyes', team:'Football' },
+};
+const LOANS = {
+  'C-00988': { pid:'6203318', kind:'book', title:'Elementary Statistics', due:'2026-12-18' },
+  'C-00412': { pid:'6203318', kind:'book', title:'General Chemistry', due:'2026-12-18' },
+  'L-0019':  { pid:'6203318', kind:'tech', title:'Laptop · Dell Latitude 5440', due:'2026-12-18' },
+  'L-0031':  { pid:'5521907', kind:'tech', title:'Laptop · Dell Latitude 5420', due:'2026-10-01' },
+  'C-00555': { pid:'6100224', kind:'book', title:'Calculus I', due:'2026-12-18' },
+  'C-00556': { pid:'6100224', kind:'book', title:'Calculus I Study Guide', due:'2026-12-18' },
+};
+const SHELF = { 'C-03051':'Principles of Microeconomics', 'L-0044':'Laptop · Dell Latitude 5440' };
+const DEMO = [
+  ['C-00988','Out to Maya Chen, on time'],['L-0031','Laptop, past due'],['C-00555','Out to Luis Ortega'],
+  ['C-03051','On the shelf, not out'],['ZZ-9999','Unknown tag'],['6203318','PID: show what they hold'],['0412345','PID with nothing out'],
+];
+const REASONS = [['Kept','Student keeps it, e.g. next term'],['Lost','Reported lost'],['Bought out','Paid for or replaced']];
+const NAV = [['Home','Admin%20Dashboard.dc.html'],['Check out','Check%20Out.dc.html'],['Check in','Check%20In.dc.html'],['Checked-out items','#'],['Checked-out books','#']];
+const TODAY = '2026-10-14';
+const fmtDate = iso => new Date(iso + 'T12:00:00Z').toLocaleDateString('en-US', { timeZone:'America/New_York', month:'short', day:'numeric', year:'numeric' });
+const daysLate = iso => Math.round((new Date(TODAY) - new Date(iso)) / 864e5);
+const nameOf = pid => `${PEOPLE[pid].first} ${PEOPLE[pid].last}`;
+const TONES = {
+  ok:{ bg:'#E7F5EC', fg:'#176B3F', icon:'✓' }, warn:{ bg:'#FFF4CC', fg:'#5C4300', icon:'!' },
+  err:{ bg:'#FDECEA', fg:'#B42318', icon:'×' }, info:{ bg:'#E0F6FA', fg:'#005F73', icon:'i' },
+};
+
+class Component extends DCLogic {
+  state = { scanValue:'', feedback:null, session:[], pid:null, dues:{}, dialog:null, reason:null, dlgNote:'' };
+  scanRef = React.createRef();
+  componentDidMount() { this.focus(); }
+  focus() { setTimeout(() => this.scanRef.current && this.scanRef.current.focus(), 0); }
+  beep(ok) {
+    if (this.props.sound === false) return;
+    try {
+      const ac = this.ac || (this.ac = new (window.AudioContext || window.webkitAudioContext)());
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.frequency.value = ok ? 880 : 220; g.gain.value = 0.05;
+      o.connect(g).connect(ac.destination); o.start(); o.stop(ac.currentTime + (ok ? 0.08 : 0.25));
+    } catch (e) {}
+  }
+  say(tone, word, text, action) { this.beep(tone === 'ok'); this.setState({ feedback:{ tone, word, text, action } }); }
+  closed(tag) { return this.state.session.find(r => r.tag === tag); }
+  due(tag) { return this.state.dues[tag] || LOANS[tag].due; }
+  nowLabel() { return new Date().toLocaleTimeString('en-US', { timeZone:'America/New_York', hour:'numeric', minute:'2-digit' }); }
+  checkIn(tag) {
+    const l = LOANS[tag], due = this.due(tag), late = daysLate(due);
+    this.setState(s => ({ pid:l.pid, session:[{ tag, kind:'return', time:this.nowLabel(), cond:'Good', note:'', lateDays:late > 0 ? late : 0 }, ...s.session] }));
+    late > 0
+      ? this.say('warn', 'Checked in · past due', `${l.title} from ${nameOf(l.pid)}, ${late} days late.`)
+      : this.say('ok', 'Checked in', `${l.title} from ${nameOf(l.pid)}.`);
+    this.focus();
+  }
+  scan(raw) {
+    const v = raw.trim().toUpperCase();
+    this.setState({ scanValue:'' });
+    if (!v) return;
+    if (/^\d{7}$/.test(v)) {
+      if (!PEOPLE[v]) return this.say('err', 'Not found', `No person with PID ${v}.`);
+      this.setState({ pid:v });
+      const n = Object.keys(LOANS).filter(t => LOANS[t].pid === v && !this.closed(t)).length;
+      return this.say('info', nameOf(v), n ? `Holds ${n} item${n > 1 ? 's' : ''}. Scan them, or use the list on the right.` : 'Nothing out this term.');
+    }
+    if (/^\d+$/.test(v)) return this.say('err', 'Not a PID', `PIDs have 7 digits.`);
+    const prev = this.closed(v);
+    if (prev) return this.say('warn', 'Already done', `${v} was closed at ${prev.time} in this session.`);
+    if (LOANS[v]) return this.checkIn(v);
+    if (SHELF[v]) return this.say('info', 'Not checked out', `${SHELF[v]} (${v}) has no open loan. Put it back on the shelf.`, 'Item history');
+    this.say('err', 'Unknown tag', `${v} is not in inventory.`, 'Add it');
+  }
+  setRow(tag, patch) { this.setState(s => ({ session:s.session.map(r => r.tag === tag ? { ...r, ...patch } : r) })); }
+  confirmNfr() {
+    const s = this.state, tag = s.dialog, l = LOANS[tag];
+    this.setState({ dialog:null, pid:l.pid, session:[{ tag, kind:'nfr', time:this.nowLabel(), reason:s.reason, note:s.dlgNote }, ...s.session] });
+    this.say('ok', 'Loan closed', `${l.title} marked “${s.reason}”, not returned.`);
+    this.focus();
+  }
+
+  renderVals() {
+    const s = this.state;
+    const isAdmin = (this.props.role ?? 'ADMIN') === 'ADMIN';
+    const fb = s.feedback ? { ...s.feedback, ...TONES[s.feedback.tone], hasAction:!!s.feedback.action } : {};
+    const session = s.session.map(r => {
+      const l = LOANS[r.tag], ret = r.kind === 'return';
+      return { ...r, title:l.title, person:nameOf(l.pid), due:fmtDate(this.due(r.tag)), isReturn:ret,
+        badge: !ret ? `Not for return · ${r.reason}` : r.lateDays ? `! ${r.lateDays} days past due` : '✓ Returned',
+        badgeBg: !ret ? '#F0F2F5' : r.lateDays ? '#FDECEA' : '#E7F5EC',
+        badgeFg: !ret ? '#4A5A73' : r.lateDays ? '#B42318' : '#176B3F',
+        notePh: l.kind === 'tech' ? 'e.g. cracked screen, missing charger' : 'e.g. water damage, highlighting',
+        undo:() => { this.setState({ session:s.session.filter(x => x.tag !== r.tag) }); this.say('info', 'Undone', `${r.tag} is open again.`); this.focus(); },
+        setCond:e => this.setRow(r.tag, { cond:e.target.value }), setNote:e => this.setRow(r.tag, { note:e.target.value }) };
+    });
+    const p = s.pid ? PEOPLE[s.pid] : null;
+    const still = s.pid ? Object.keys(LOANS).filter(t => LOANS[t].pid === s.pid && !this.closed(t)).map(tag => {
+      const l = LOANS[tag], due = this.due(tag);
+      return { tag, title:l.title, due:fmtDate(due), pastDue:daysLate(due) > 0, isTech:l.kind === 'tech',
+        checkIn:() => this.checkIn(tag),
+        nfr:() => this.setState({ dialog:tag, reason:null, dlgNote:'' }),
+        renew:() => { this.setState({ dues:{ ...s.dues, [tag]:'2026-12-18' } }); this.say('ok', 'Renewed', `${l.title} now due Dec 18, 2026.`); this.focus(); } };
+    }) : [];
+    const d = s.dialog ? LOANS[s.dialog] : null;
+    const closeDialog = () => { this.setState({ dialog:null }); this.focus(); };
+    return {
+      isAdmin, roleLabel:isAdmin ? 'Admin' : 'Staff', userName:isAdmin ? 'M. Alvarez' : 'J. Ruiz', userInitials:isAdmin ? 'MA' : 'JR',
+      nav:NAV.map(([label, href]) => ({ label, href, active:label === 'Check in', idle:label !== 'Check in' })),
+      navAdmin:['Imports','Inventory','Terms','Users','Audit log','Backups','Settings'],
+      scanRef:this.scanRef, scanValue:s.scanValue,
+      onScanChange:e => this.setState({ scanValue:e.target.value }),
+      onScanKey:e => { if (e.key === 'Enter') { e.preventDefault(); this.scan(s.scanValue); } if (e.key === 'Escape') this.setState({ feedback:null }); },
+      showDemo:this.props.showDemo !== false,
+      demoScans:DEMO.map(([code, hint]) => ({ code, hint, run:() => { this.scan(code); this.focus(); } })),
+      hasFeedback:!!s.feedback, fb,
+      session, sessionEmpty:session.length === 0, sessionCount: session.length ? `${session.length} closed` : '',
+      hasPerson:!!p, noPerson:!p,
+      p: p ? { pid:s.pid, name:nameOf(s.pid), initials:p.first[0] + p.last[0], team:p.team } : {},
+      still, allBack:!!p && still.length === 0, stillCount: still.length ? `${still.length} item${still.length > 1 ? 's' : ''}` : '',
+      dialogOpen:!!d, dlg: d ? { title:d.title, tag:s.dialog, person:nameOf(d.pid) } : {},
+      reasons:REASONS.map(([label, hint]) => { const on = s.reason === label; return { label, hint, on:on ? 'true' : 'false',
+        border:on ? '#1F4F99' : '#E2E6EC', bg:on ? '#EAF0F8' : '#FFFFFF', dot:on ? '#1F4F99' : '#8793A6', fill:on ? '#1F4F99' : 'transparent',
+        pick:() => this.setState({ reason:label }) }; }),
+      dlgNote:s.dlgNote, setDlgNote:e => this.setState({ dlgNote:e.target.value }),
+      dlgReady:!!s.reason, dlgNotReady:!s.reason,
+      closeDialog, stop:e => e.stopPropagation(), confirmNfr:() => this.confirmNfr(),
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;background:#F5F6F8;color:#081E3F;font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+a{color:#1F4F99;text-decoration:none}
+a:hover{color:#12305E;text-decoration:underline}
+:focus-visible{outline:2px solid #1F4F99;outline-offset:2px}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</helmet>
+<div style="display:flex;min-height:100vh;background:#F5F6F8">
+
+  <nav aria-label="Main" style="width:232px;flex:0 0 232px;background:#081E3F;color:#FFFFFF;display:flex;flex-direction:column;padding:20px 12px;gap:4px;position:sticky;top:0;height:100vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;flex-shrink:0;gap:10px;margin:0 0 20px;padding:10px 12px;background:#FFFFFF;border-radius:14px;corner-shape:squircle">
+      <img src="./assets/fiu-panther.png" alt="FIU Panthers" style="width:40px;height:auto;flex-shrink:0;display:block">
+      <img src="./assets/saac-wordmark.png" alt="Student-Athlete Academic Center" style="min-width:0;width:100%;max-width:140px;height:auto;display:block">
+    </div>
+    <sc-for list="{{ nav }}" as="n" hint-placeholder-count="5">
+      <sc-if value="{{ n.active }}" hint-placeholder-val="{{ false }}">
+        <a href="{{ n.href }}" aria-current="page" style="position:relative;display:flex;align-items:center;flex-shrink:0;height:40px;padding:0 12px;border-radius:12px;background:rgba(255,255,255,0.12);color:#FFFFFF;font-weight:500;font-size:15px;text-decoration:none">
+          <span style="position:absolute;left:0;top:10px;bottom:10px;width:3px;border-radius:3px;background:#D1A644"></span>{{ n.label }}</a>
+      </sc-if>
+      <sc-if value="{{ n.idle }}" hint-placeholder-val="{{ true }}">
+        <a href="{{ n.href }}" style="display:flex;align-items:center;flex-shrink:0;height:40px;padding:0 12px;border-radius:12px;color:#FFFFFF;font-size:15px;text-decoration:none;transition:background 150ms ease-out" style-hover="background:rgba(255,255,255,0.06);text-decoration:none;color:#FFFFFF">{{ n.label }}</a>
+      </sc-if>
+    </sc-for>
+    <sc-if value="{{ isAdmin }}" hint-placeholder-val="{{ true }}">
+      <div style="font-size:12px;font-weight:500;color:#B9C4D6;flex-shrink:0;padding:20px 12px 6px">Admin</div>
+      <sc-for list="{{ navAdmin }}" as="n" hint-placeholder-count="7">
+        <a href="#" style="display:flex;align-items:center;flex-shrink:0;height:40px;padding:0 12px;border-radius:12px;color:#B9C4D6;font-size:15px;text-decoration:none;transition:background 150ms ease-out" style-hover="background:rgba(255,255,255,0.06);color:#FFFFFF;text-decoration:none">{{ n }}</a>
+      </sc-for>
+    </sc-if>
+    <div style="margin-top:auto;flex-shrink:0;display:flex;align-items:center;gap:10px;padding:12px;border-top:1px solid rgba(255,255,255,0.12)">
+      <div style="width:32px;height:32px;border-radius:999px;background:rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600">{{ userInitials }}</div>
+      <div style="display:flex;flex-direction:column;line-height:1.25">
+        <span style="font-size:13px;font-weight:500">{{ userName }}</span>
+        <span style="font-size:12px;color:#B9C4D6">{{ roleLabel }}</span>
+      </div>
+    </div>
+  </nav>
+
+  <main style="flex:1;min-width:0;padding:20px 24px 32px;display:flex;flex-direction:column;gap:16px;max-width:1440px">
+
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <h1 style="margin:0;font-size:24px;font-weight:600;letter-spacing:-0.01em">Check out</h1>
+        <span style="display:inline-flex;align-items:center;height:28px;padding:0 12px;border-radius:999px;background:#FFFFFF;border:1px solid #E2E6EC;font-size:13px;font-weight:500">FALL26 · current term</span>
+      </div>
+      <sc-if value="{{ hasPerson }}" hint-placeholder-val="{{ false }}">
+        <button onClick="{{ startOver }}" style="height:40px;padding:0 16px;border-radius:12px;border:1px solid #E2E6EC;background:#FFFFFF;color:#081E3F;font:inherit;font-weight:500;cursor:pointer" style-hover="border-color:#8793A6">Start over</button>
+      </sc-if>
+    </div>
+
+    <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">
+
+      <!-- Left: scan + cart -->
+      <div style="flex:1 1 560px;min-width:0;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="width:24px;height:24px;border-radius:999px;background:#081E3F;color:#FFFFFF;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center">{{ stepNum }}</span>
+          <span style="font-size:17px;font-weight:600">{{ stepLabel }}</span>
+        </div>
+        <div style="position:relative">
+          <span aria-hidden="true" style="position:absolute;left:18px;top:50%;width:14px;height:14px;margin-top:-9px;border:1.75px solid #5D6B82;border-radius:999px"></span>
+          <span aria-hidden="true" style="position:absolute;left:31px;top:50%;width:6px;height:1.75px;margin-top:5px;background:#5D6B82;transform:rotate(45deg)"></span>
+          <input ref="{{ scanRef }}" value="{{ scanValue }}" onChange="{{ onScanChange }}" onKeyDown="{{ onScanKey }}" aria-label="{{ stepLabel }}" placeholder="{{ scanPlaceholder }}" style="width:100%;height:56px;padding:0 20px 0 48px;border-radius:16px;corner-shape:squircle;border:1px solid #8793A6;background:#FFFFFF;font:inherit;font-size:17px;color:#081E3F;font-variant-numeric:tabular-nums;outline:none;transition:box-shadow 150ms ease-out" style-focus="box-shadow:0 0 0 2px #FFFFFF, 0 0 0 4px #1F4F99">
+        </div>
+        <sc-if value="{{ showDemo }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <span style="font-size:12px;font-weight:500;color:#5D6B82;margin-right:4px">Demo scans</span>
+            <sc-for list="{{ demoScans }}" as="c" hint-placeholder-count="8">
+              <button onClick="{{ c.run }}" title="{{ c.hint }}" style="height:28px;padding:0 10px;border-radius:999px;border:1px solid #E2E6EC;background:#FFFFFF;color:#4A5A73;font:inherit;font-size:12px;font-weight:500;font-variant-numeric:tabular-nums;cursor:pointer" style-hover="border-color:#8793A6;color:#081E3F">{{ c.code }}</button>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ hasFeedback }}" hint-placeholder-val="{{ false }}">
+          <div role="status" style="display:flex;align-items:center;gap:12px;min-height:48px;padding:10px 16px;border-radius:12px;background:{{ fb.bg }};color:{{ fb.fg }}">
+            <span aria-hidden="true" style="width:22px;height:22px;flex:0 0 22px;border-radius:999px;border:1.75px solid {{ fb.fg }};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600">{{ fb.icon }}</span>
+            <span style="font-weight:600;white-space:nowrap">{{ fb.word }}</span>
+            <span style="flex:1;text-wrap:pretty">{{ fb.text }}</span>
+            <sc-if value="{{ fb.hasAction }}" hint-placeholder-val="{{ false }}">
+              <a href="#" style="font-weight:500;color:{{ fb.fg }};white-space:nowrap">{{ fb.action }} ›</a>
+            </sc-if>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ hasMatches }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;padding:8px;background:#FFFFFF;border:1px solid #E2E6EC;border-radius:20px;corner-shape:squircle;box-shadow:0 1px 2px rgba(8,30,63,0.04),0 4px 16px rgba(8,30,63,0.05)">
+            <sc-for list="{{ matches }}" as="m" hint-placeholder-count="3">
+              <button onClick="{{ m.pick }}" style="display:flex;align-items:center;gap:12px;height:48px;padding:0 12px;border:0;border-radius:12px;background:transparent;font:inherit;color:#081E3F;text-align:left;cursor:pointer" style-hover="background:#EAF0F8">
+                <span style="flex:1;font-weight:500">{{ m.name }}</span>
+                <span style="font-size:13px;color:#4A5A73;font-variant-numeric:tabular-nums">{{ m.pid }} · {{ m.team }}</span>
+              </button>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isDone }}" hint-placeholder-val="{{ false }}">
+          <section style="display:flex;flex-direction:column;align-items:flex-start;gap:16px;padding:28px;background:#FFFFFF;border:1px solid #E2E6EC;border-radius:20px;corner-shape:squircle;box-shadow:0 1px 2px rgba(8,30,63,0.04),0 4px 16px rgba(8,30,63,0.05)">
+            <span style="display:inline-flex;align-items:center;gap:8px;height:28px;padding:0 12px;border-radius:999px;background:#E7F5EC;color:#176B3F;font-size:13px;font-weight:600">✓ Checked out</span>
+            <div style="display:flex;flex-direction:column;gap:4px">
+              <span style="font-size:24px;font-weight:600;letter-spacing:-0.01em">{{ done.count }} to {{ done.name }}</span>
+              <span style="color:#4A5A73;font-variant-numeric:tabular-nums">Due {{ done.due }}. {{ done.sign }}</span>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <sc-if value="{{ done.hasBooks }}" hint-placeholder-val="{{ false }}">
+                <button style="height:48px;padding:0 20px;border-radius:12px;border:0;background:#081E3F;color:#FFFFFF;font:inherit;font-weight:500;cursor:pointer" style-hover="background:#12305E">Print SAAC Book Receipt</button>
+              </sc-if>
+              <sc-if value="{{ done.hasTech }}" hint-placeholder-val="{{ false }}">
+                <button style="height:48px;padding:0 20px;border-radius:12px;border:1px solid #E2E6EC;background:#FFFFFF;color:#081E3F;font:inherit;font-weight:500;cursor:pointer" style-hover="border-color:#8793A6">Print tech agreement</button>
+              </sc-if>
+              <button onClick="{{ startOver }}" style="height:48px;padding:0 20px;border-radius:12px;border:1px solid #E2E6EC;background:#FFFFFF;color:#081E3F;font:inherit;font-weight:500;cursor:pointer" style-hover="border-color:#8793A6">Next person</button>
+            </div>
+          </section>
+        </sc-if>
+
+        <sc-if value="{{ showCart }}" hint-placeholder-val="{{ true }}">
+          <section style="display:flex;flex-direction:column;background:#FFFFFF;border:1px solid #E2E6EC;border-radius:20px;corner-shape:squircle;box-shadow:0 1px 2px rgba(8,30,63,0.04),0 4px 16px rgba(8,30,63,0.05);overflow:hidden">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;padding:18px 20px 12px">
+              <h2 style="margin:0;font-size:17px;font-weight:600">Cart</h2>
+              <span style="font-size:13px;color:#5D6B82;font-variant-numeric:tabular-nums">{{ cartCount }}</span>
+            </div>
+            <sc-if value="{{ cartEmpty }}" hint-placeholder-val="{{ true }}">
+              <p style="margin:0;padding:24px 20px 28px;border-top:1px solid #E2E6EC;color:#4A5A73">{{ cartEmptyText }}</p>
+            </sc-if>
+            <sc-for list="{{ cart }}" as="r" hint-placeholder-count="0">
+              <div style="display:flex;flex-direction:column;gap:10px;padding:12px 20px;border-top:1px solid #E2E6EC">
+                <div style="display:flex;align-items:center;gap:14px">
+                  <span style="width:52px;flex:0 0 52px;height:24px;border-radius:999px;background:#F0F2F5;font-size:12px;font-weight:500;color:#4A5A73;display:flex;align-items:center;justify-content:center">{{ r.kindLabel }}</span>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.35">
+                    <span style="font-weight:500">{{ r.title }}</span>
+                    <span style="font-size:13px;color:#5D6B82;font-variant-numeric:tabular-nums">{{ r.tag }} · {{ r.meta }}</span>
+                  </div>
+                  <span style="display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:999px;background:{{ r.badgeBg }};color:{{ r.badgeFg }};font-size:12px;font-weight:500;white-space:nowrap">{{ r.badge }}</span>
+                  <button onClick="{{ r.remove }}" aria-label="Remove {{ r.tag }}" style="height:40px;padding:0 12px;border:0;border-radius:12px;background:transparent;color:#1F4F99;font:inherit;font-size:13px;font-weight:500;cursor:pointer" style-hover="background:#EAF0F8">Remove</button>
+                </div>
+                <sc-if value="{{ r.isTech }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;gap:8px;padding-left:66px;flex-wrap:wrap">
+                    <label style="display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:500;color:#4A5A73">Condition out
+                      <select value="{{ r.cond }}" onChange="{{ r.setCond }}" style="height:40px;padding:0 12px;border-radius:12px;border:1px solid #8793A6;background:#FFFFFF;font:inherit;color:#081E3F">
+                        <option value="Good">Good</option>
+                        <option value="Fair">Fair</option>
+                        <option value="Damaged">Damaged</option>
+                      </select>
+                    </label>
+                    <label style="flex:1 1 240px;display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:500;color:#4A5A73">Comments for the agreement
+                      <input value="{{ r.note }}" onChange="{{ r.setNote }}" placeholder="e.g. small scratch on lid" style="height:40px;padding:0 12px;border-radius:12px;border:1px solid #8793A6;background:#FFFFFF;font:inherit;color:#081E3F;outline:none" style-focus="box-shadow:0 0 0 2px #FFFFFF, 0 0 0 4px #1F4F99">
+                    </label>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-for>
+          </section>
+        </sc-if>
+      </div>
+
+      <!-- Right: person, assigned, due, submit -->
+      <aside style="flex:0 1 360px;min-width:300px;display:flex;flex-direction:column;gap:16px">
+        <section style="display:flex;flex-direction:column;gap:14px;padding:20px;background:#FFFFFF;border:1px solid #E2E6EC;border-radius:20px;corner-shape:squircle;box-shadow:0 1px 2px rgba(8,30,63,0.04),0 4px 16px rgba(8,30,63,0.05)">
+          <sc-if value="{{ noPerson }}" hint-placeholder-val="{{ true }}">
+            <span style="font-size:13px;font-weight:500;color:#4A5A73">Person</span>
+            <span style="color:#4A5A73">Nobody selected yet. Scan their PID or type a name.</span>
+          </sc-if>
+          <sc-if value="{{ hasPerson }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:center;gap:12px">
+              <div style="width:44px;height:44px;flex:0 0 44px;border-radius:999px;background:#EAF0F8;display:flex;align-items:center;justify-content:center;font-weight:600">{{ p.initials }}</div>
+              <div style="display:flex;flex-direction:column;line-height:1.3;min-width:0">
+                <span style="font-size:20px;font-weight:600;letter-spacing:-0.01em">{{ p.name }}</span>
+                <span style="font-size:13px;color:#4A5A73;font-variant-numeric:tabular-nums">PID {{ p.pid }} · {{ p.team }}</span>
+              </div>
+            </div>
+            <span style="align-self:flex-start;display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:999px;background:{{ p.schBg }};color:{{ p.schFg }};font-size:12px;font-weight:500">{{ p.schIcon }} {{ p.schText }}</span>
+            <div style="display:flex;justify-content:space-between;padding-top:12px;border-top:1px solid #E2E6EC;font-size:13px">
+              <span style="color:#4A5A73">Has out now</span>
+              <span style="font-weight:500;font-variant-numeric:tabular-nums">{{ p.holding }}</span>
+            </div>
+            <a href="#" style="font-size:13px;font-weight:500">Person page ›</a>
+          </sc-if>
+        </section>
+
+        <sc-if value="{{ hasPerson }}" hint-placeholder-val="{{ false }}">
+          <section style="display:flex;flex-direction:column;gap:6px;padding:20px 20px 14px;background:#FFFFFF;border:1px solid #E2E6EC;border-radius:20px;corner-shape:squircle;box-shadow:0 1px 2px rgba(8,30,63,0.04),0 4px 16px rgba(8,30,63,0.05)">
+            <div style="display:flex;align-items:baseline;justify-content:space-between">
+              <h2 style="margin:0;font-size:17px;font-weight:600">Assigned to pull</h2>
+              <a href="#" style="font-size:13px;font-weight:500">Pull list ›</a>
+            </div>
+            <sc-if value="{{ noAssigned }}" hint-placeholder-val="{{ false }}">
+              <span style="font-size:13px;color:#4A5A73;padding:6px 0">No copies assigned to them this term.</span>
+            </sc-if>
+            <sc-for list="{{ assigned }}" as="a" hint-placeholder-count="2">
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid #E2E6EC">
+                <span aria-hidden="true" style="width:20px;height:20px;flex:0 0 20px;border-radius:6px;border:1.75px solid {{ a.boxColor }};background:{{ a.boxBg }};color:#FFFFFF;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center">{{ a.tick }}</span>
+                <span style="flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.35">
+                  <span style="font-size:13px;font-weight:500">{{ a.title }}</span>
+                  <span style="font-size:12px;color:#5D6B82;font-variant-numeric:tabular-nums">{{ a.tag }}</span>
+                </span>
+                <span style="font-size:12px;font-weight:500;color:{{ a.stateColor }}">{{ a.state }}</span>
+              </div>
+            </sc-for>
+          </section>
+        </sc-if>
+
+        <section style="display:flex;flex-direction:column;gap:12px;padding:20px;background:#FFFFFF;border:1px solid #E2E6EC;border-radius:20px;corner-shape:squircle;box-shadow:0 1px 2px rgba(8,30,63,0.04),0 4px 16px rgba(8,30,63,0.05)">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+            <div style="display:flex;flex-direction:column;line-height:1.35">
+              <span style="font-size:13px;font-weight:500;color:#4A5A73">Due</span>
+              <span style="font-size:17px;font-weight:600;font-variant-numeric:tabular-nums">{{ dueLabel }}</span>
+              <span style="font-size:12px;color:#5D6B82">{{ dueSource }}</span>
+            </div>
+            <sc-if value="{{ isAdmin }}" hint-placeholder-val="{{ true }}">
+              <button onClick="{{ toggleOverride }}" style="height:40px;padding:0 12px;border:0;border-radius:12px;background:transparent;color:#1F4F99;font:inherit;font-size:13px;font-weight:500;cursor:pointer" style-hover="background:#EAF0F8">{{ overrideBtn }}</button>
+            </sc-if>
+          </div>
+          <sc-if value="{{ overrideOn }}" hint-placeholder-val="{{ false }}">
+            <label style="display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:500;color:#4A5A73">New due date
+              <input type="date" value="{{ dueDate }}" onChange="{{ setDueDate }}" style="height:40px;padding:0 12px;border-radius:12px;border:1px solid #8793A6;background:#FFFFFF;font:inherit;color:#081E3F">
+            </label>
+            <label style="display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:500;color:#4A5A73">Reason (required)
+              <input value="{{ dueReason }}" onChange="{{ setDueReason }}" placeholder="e.g. incomplete grade, class ends later" style="height:40px;padding:0 12px;border-radius:12px;border:1px solid #8793A6;background:#FFFFFF;font:inherit;color:#081E3F;outline:none" style-focus="box-shadow:0 0 0 2px #FFFFFF, 0 0 0 4px #1F4F99">
+            </label>
+          </sc-if>
+        </section>
+
+        <sc-if value="{{ canSubmit }}" hint-placeholder-val="{{ false }}">
+          <button onClick="{{ submit }}" style="height:48px;border-radius:12px;border:0;background:#081E3F;color:#FFFFFF;font:inherit;font-size:17px;font-weight:500;cursor:pointer;transition:background 150ms ease-out" style-hover="background:#12305E">{{ submitLabel }}</button>
+        </sc-if>
+        <sc-if value="{{ cannotSubmit }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <button disabled="{{ true }}" style="height:48px;border-radius:12px;border:0;background:#E2E6EC;color:#5D6B82;font:inherit;font-size:17px;font-weight:500;cursor:not-allowed">{{ submitLabel }}</button>
+            <span style="font-size:12px;color:#5D6B82;text-align:center">{{ submitHint }}</span>
+          </div>
+        </sc-if>
+      </aside>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;role&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;ADMIN&quot;,&quot;STAFF&quot;],&quot;default&quot;:&quot;ADMIN&quot;,&quot;tsType&quot;:&quot;'ADMIN'|'STAFF'&quot;},&quot;showDemo&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;sound&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
+const PEOPLE = {
+  '0412345': { first:'Jordan', last:'Reyes', team:'Football', kind:'ATHLETE', sch:true },
+  '6203318': { first:'Maya', last:'Chen', team:'Softball', kind:'ATHLETE', sch:true },
+  '6100224': { first:'Luis', last:'Ortega', team:'Baseball', kind:'ATHLETE', sch:false },
+  '5521907': { first:'Andre', last:'Baptiste', team:'Staff (tutor)', kind:'STAFF', sch:true },
+  '6311470': { first:'Jordan', last:'Mills', team:'Womens Soccer', kind:'ATHLETE', sch:true },
+};
+const TAGS = {
+  'C-01842': { kind:'book', title:'Introduction to Psychology', isbn:'9780000018422', ed:'2nd ed.', assignedTo:'0412345' },
+  'C-02210': { kind:'book', title:'College Algebra', isbn:'9780000022108', ed:'7th ed.', assignedTo:'0412345' },
+  'C-00317': { kind:'book', title:'Concepts of Biology', isbn:'9780000003173', ed:'12th ed.', assignedTo:'6203318' },
+  'C-03051': { kind:'book', title:'Principles of Microeconomics', isbn:'9780000030516', ed:'9th ed.' },
+  'C-00988': { kind:'book', title:'Elementary Statistics', isbn:'9780000009885', ed:'14th ed.', outTo:'6203318' },
+  'C-01120': { kind:'book', title:'English Composition', isbn:'9780000011208', ed:'4th ed.', assignedTo:'6100224' },
+  'C-00412': { kind:'book', title:'General Chemistry', isbn:'9780000004125', ed:'11th ed.', outTo:'6203318' },
+  'L-0044':  { kind:'tech', title:'Laptop · Dell Latitude 5440', type:'Laptop' },
+  'CH-0102': { kind:'tech', title:'Charger · USB-C 65 W', type:'Charger' },
+  'L-0052':  { kind:'tech', title:'Laptop · Dell Latitude 5440', type:'Laptop', status:'In repair', statusNote:'cracked screen' },
+  'L-0031':  { kind:'tech', title:'Laptop · Dell Latitude 5420', type:'Laptop', outTo:'5521907' },
+};
+const HOLDING = { '6203318':3, '5521907':1, '6100224':2 };
+const DEMO = [
+  ['0412345','Jordan Reyes · has 2 assigned copies'],['C-01842','Assigned to this person'],['C-02210','Assigned to this person'],
+  ['L-0044','Tech item, available'],['C-03051','Unassigned copy on the shelf'],['C-00988','Already out to someone else'],
+  ['C-01120','Assigned to someone else'],['ZZ-9999','Unknown tag'],['Jordan','Name with two matches'],['6100224','Not on scholarship'],['L-0052','Laptop in repair'],
+];
+const NAV = [['Home','Admin%20Dashboard.dc.html'],['Check out','Check%20Out.dc.html'],['Check in','Check%20In.dc.html'],['Checked-out items','#'],['Checked-out books','#']];
+const DEFAULT_DUE = '2026-12-18';
+const fmtDate = iso => new Date(iso + 'T12:00:00Z').toLocaleDateString('en-US', { timeZone:'America/New_York', month:'short', day:'numeric', year:'numeric' });
+const nameOf = pid => PEOPLE[pid] ? `${PEOPLE[pid].first} ${PEOPLE[pid].last}` : 'someone';
+const TONES = {
+  ok:{ bg:'#E7F5EC', fg:'#176B3F', icon:'✓' }, warn:{ bg:'#FFF4CC', fg:'#5C4300', icon:'!' },
+  err:{ bg:'#FDECEA', fg:'#B42318', icon:'×' }, info:{ bg:'#E0F6FA', fg:'#005F73', icon:'i' },
+};
+
+class Component extends DCLogic {
+  state = { pid:null, cart:[], scanValue:'', feedback:null, matches:[], outLocal:{}, override:false, dueDate:DEFAULT_DUE, dueReason:'', done:null };
+  scanRef = React.createRef();
+  componentDidMount() { this.focus(); }
+  focus() { setTimeout(() => this.scanRef.current && this.scanRef.current.focus(), 0); }
+  beep(ok) {
+    if (this.props.sound === false) return;
+    try {
+      const ac = this.ac || (this.ac = new (window.AudioContext || window.webkitAudioContext)());
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.frequency.value = ok ? 880 : 220; g.gain.value = 0.05;
+      o.connect(g).connect(ac.destination); o.start(); o.stop(ac.currentTime + (ok ? 0.08 : 0.25));
+    } catch (e) {}
+  }
+  say(tone, word, text, action) { this.beep(tone === 'ok'); this.setState({ feedback:{ tone, word, text, action } }); }
+  pick(pid) {
+    const p = PEOPLE[pid];
+    this.setState({ pid, matches:[], cart:[], done:null, override:false, dueDate:DEFAULT_DUE, dueReason:'' });
+    this.say(p.sch || p.kind === 'STAFF' ? 'ok' : 'warn', p.sch || p.kind === 'STAFF' ? 'Found' : 'Not on scholarship',
+      p.sch || p.kind === 'STAFF' ? `${p.first} ${p.last}. Now scan their copies and tech.` : `${p.first} ${p.last} is not on scholarship. You can still check out.`);
+    this.focus();
+  }
+  scan(raw) {
+    const v = raw.trim().toUpperCase();
+    this.setState({ scanValue:'' });
+    if (!v) return;
+    const s = this.state;
+    if (/^\d+$/.test(v)) {
+      if (v.length === 6) return this.say('warn', 'Check PID', `PIDs have 7 digits. Did you mean 0${v}?`);
+      if (v.length !== 7) return this.say('err', 'Not a PID', `“${v}” is ${v.length} digits. PIDs have 7.`);
+      if (!PEOPLE[v]) return this.say('err', 'Not found', `No person with PID ${v}.`, 'Add a person');
+      if (s.cart.length && v !== s.pid) return this.say('warn', 'Cart not empty', `Finish or clear ${nameOf(s.pid)}’s cart before starting another person.`);
+      return this.pick(v);
+    }
+    const tag = TAGS[v];
+    if (/^[A-Z]{1,2}-\d+$/.test(v)) {
+      if (!s.pid) return this.say('warn', 'Person first', 'Scan the person’s PID before scanning items.');
+      if (!tag) return this.say('err', 'Unknown tag', `${v} is not in inventory.`, 'Add it');
+      if (s.cart.find(c => c.tag === v)) return this.say('warn', 'Already in cart', `${v} is already in this cart.`);
+      if (tag.status) return this.say('err', tag.status, `${v} is ${tag.status.toLowerCase()} (${tag.statusNote}). It can’t be checked out until an admin puts it back in service.`, 'Item history');
+      const outTo = s.outLocal[v] || tag.outTo;
+      if (outTo) return this.say('err', 'Already out', `${v} is checked out to ${nameOf(outTo)}, due Dec 18, 2026. Check it in first.`, 'Item history');
+      if (tag.assignedTo && tag.assignedTo !== s.pid) return this.say('err', 'Assigned to someone else', `${v} is reserved for ${nameOf(tag.assignedTo)}. Pick another copy or release it on the pull list.`);
+      this.setState({ cart:[...s.cart, { tag:v, cond:'Good', note:'' }] });
+      return this.say('ok', 'Added', tag.kind === 'tech' ? `${tag.title}. Record its condition below.` : tag.assignedTo ? `${tag.title} fulfils their assigned need.` : `${tag.title}. No need on file, a manual need will be added.`);
+    }
+    const q = v.toLowerCase();
+    const found = Object.entries(PEOPLE).filter(([, p]) => `${p.first} ${p.last}`.toLowerCase().includes(q));
+    if (!found.length) return this.say('err', 'No match', `Nobody matches “${raw.trim()}”.`, 'Add a person');
+    if (found.length === 1) { if (s.cart.length && found[0][0] !== s.pid) return this.say('warn', 'Cart not empty', 'Finish this cart first.'); return this.pick(found[0][0]); }
+    this.setState({ matches:found.map(([pid]) => pid), feedback:{ tone:'info', word:`${found.length} matches`, text:'Pick the right person. Check the PID.' } });
+  }
+  setCart(tag, patch) { this.setState(s => ({ cart:s.cart.map(c => c.tag === tag ? { ...c, ...patch } : c) })); }
+  submit() {
+    const s = this.state, p = PEOPLE[s.pid];
+    const outLocal = { ...s.outLocal }; s.cart.forEach(c => { outLocal[c.tag] = s.pid; });
+    const n = s.cart.length;
+    this.beep(true);
+    this.setState({ outLocal, cart:[], feedback:null, done:{ name:`${p.first} ${p.last}`, count:`${n} item${n > 1 ? 's' : ''}`, due:fmtDate(s.dueDate), hasTech:s.cart.some(c => TAGS[c.tag].kind === 'tech'), hasBooks:s.cart.some(c => TAGS[c.tag].kind === 'book') } });
+  }
+  startOver() { this.setState({ pid:null, cart:[], feedback:null, matches:[], done:null, override:false, dueDate:DEFAULT_DUE, dueReason:'' }); this.focus(); }
+
+  renderVals() {
+    const s = this.state;
+    const isAdmin = (this.props.role ?? 'ADMIN') === 'ADMIN';
+    const p = s.pid ? PEOPLE[s.pid] : null;
+    const fb = s.feedback ? { ...s.feedback, ...TONES[s.feedback.tone], hasAction:!!s.feedback.action } : {};
+    const cart = s.cart.map(c => {
+      const t = TAGS[c.tag], tech = t.kind === 'tech';
+      const need = !tech && t.assignedTo === s.pid;
+      return { ...c, title:t.title, isTech:tech, kindLabel:tech ? 'Tech' : 'Book',
+        meta: tech ? t.type : `ISBN ${t.isbn} · ${t.ed}`,
+        badge: tech ? `Condition: ${c.cond}` : need ? '✓ Fulfils need' : 'No need on file',
+        badgeBg: tech ? '#F0F2F5' : need ? '#E7F5EC' : '#E0F6FA', badgeFg: tech ? '#4A5A73' : need ? '#176B3F' : '#005F73',
+        remove:() => { this.setState({ cart:s.cart.filter(x => x.tag !== c.tag) }); this.focus(); },
+        setCond:e => this.setCart(c.tag, { cond:e.target.value }), setNote:e => this.setCart(c.tag, { note:e.target.value }) };
+    });
+    const assigned = Object.entries(TAGS).filter(([tag, t]) => t.assignedTo && t.assignedTo === s.pid).map(([tag, t]) => {
+      const inCart = s.cart.some(c => c.tag === tag), out = s.outLocal[tag] === s.pid;
+      return { tag, title:t.title, tick: inCart || out ? '✓' : '',
+        boxColor: inCart || out ? '#176B3F' : '#8793A6', boxBg: inCart || out ? '#176B3F' : '#FFFFFF',
+        state: out ? 'Checked out' : inCart ? 'In cart' : 'To pull', stateColor: out || inCart ? '#176B3F' : '#5D6B82' };
+    });
+    const dueChanged = s.override && s.dueDate !== DEFAULT_DUE;
+    const reasonMissing = dueChanged && !s.dueReason.trim();
+    const n = s.cart.length;
+    const canSubmit = !!p && n > 0 && !reasonMissing && !s.done;
+    const nm = s.matches.length;
+    return {
+      isAdmin, roleLabel:isAdmin ? 'Admin' : 'Staff', userName:isAdmin ? 'M. Alvarez' : 'J. Ruiz', userInitials:isAdmin ? 'MA' : 'JR',
+      nav:NAV.map(([label, href]) => ({ label, href, active:label === 'Check out', idle:label !== 'Check out' })),
+      navAdmin:['Imports','Inventory','Terms','Users','Audit log','Backups','Settings'],
+      stepNum: p ? '2' : '1', stepLabel: p ? 'Scan copies and tech' : 'Find the person',
+      scanPlaceholder: p ? 'Scan a copy or tech tag, then Enter' : 'Scan a PID or type a name, then Enter',
+      scanRef:this.scanRef, scanValue:s.scanValue,
+      onScanChange:e => this.setState({ scanValue:e.target.value }),
+      onScanKey:e => { if (e.key === 'Enter') { e.preventDefault(); this.scan(s.scanValue); } if (e.key === 'Escape') this.setState({ feedback:null, matches:[] }); },
+      showDemo:this.props.showDemo !== false,
+      demoScans:DEMO.map(([code, hint]) => ({ code, hint, run:() => { this.scan(code); this.focus(); } })),
+      hasFeedback:!!s.feedback, fb,
+      hasMatches:nm > 0, matches:s.matches.map(pid => ({ pid, name:nameOf(pid), team:PEOPLE[pid].team, pick:() => this.pick(pid) })),
+      hasPerson:!!p, noPerson:!p,
+      p: p ? { pid:s.pid, name:`${p.first} ${p.last}`, initials:p.first[0] + p.last[0], team:p.team,
+        holding: HOLDING[s.pid] ? `${HOLDING[s.pid]} items` : 'Nothing',
+        schText: p.kind === 'STAFF' ? 'Staff · scholarship rules don’t apply' : p.sch ? 'On scholarship' : 'Not on scholarship · warning only',
+        schIcon: p.kind === 'STAFF' ? 'i' : p.sch ? '✓' : '!',
+        schBg: p.kind === 'STAFF' ? '#E0F6FA' : p.sch ? '#E7F5EC' : '#FFF4CC',
+        schFg: p.kind === 'STAFF' ? '#005F73' : p.sch ? '#176B3F' : '#5C4300' } : {},
+      assigned, noAssigned:assigned.length === 0,
+      isDone:!!s.done, done: s.done ? { ...s.done, sign: s.done.hasBooks && s.done.hasTech ? 'Print both. They initial “Received by student” on the receipt and sign the tech agreement.' : s.done.hasTech ? 'Print the tech agreement and have them sign it.' : 'Print the receipt and have them initial “Received by student” for each book.' } : {}, showCart:!s.done,
+      cart, cartEmpty:n === 0, cartCount: n ? `${n} item${n > 1 ? 's' : ''}` : '',
+      cartEmptyText: p ? 'Scan a copy or tech tag. Their assigned copies are listed on the right.' : 'Scan a PID or type a name to start.',
+      dueLabel:fmtDate(s.override ? s.dueDate || DEFAULT_DUE : DEFAULT_DUE),
+      dueSource: dueChanged ? 'Changed from the term deadline' : isAdmin ? 'FALL26 return deadline' : 'FALL26 return deadline · only an admin can change it',
+      overrideOn:s.override, overrideBtn:s.override ? 'Use deadline' : 'Change',
+      toggleOverride:() => this.setState({ override:!s.override, dueDate:DEFAULT_DUE, dueReason:'' }),
+      dueDate:s.dueDate, dueReason:s.dueReason,
+      setDueDate:e => this.setState({ dueDate:e.target.value }), setDueReason:e => this.setState({ dueReason:e.target.value }),
+      canSubmit, cannotSubmit:!canSubmit,
+      submitLabel: n ? `Check out ${n} item${n > 1 ? 's' : ''}` : 'Check out',
+      submitHint: !p ? 'Find the person first.' : reasonMissing ? 'Add a reason for the new due date.' : s.done ? 'Done. Start the next person.' : 'Scan at least one item.',
+      submit:() => this.submit(), startOver:() => this.startOver(),
+    };
+  }
+}
+</script>
+</body>
+</html>
