@@ -1,0 +1,46 @@
+{
+  "name": "saac-books",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/shared",
+    "apps/api",
+    "apps/web"
+  ],
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "npm run db:generate && npm run build -w @saac/web && npm run build -w @saac/api",
+    "start": "node --env-file-if-exists=.env apps/api/dist/server.js",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:migrate:dev": "prisma migrate dev",
+    "db:seed": "tsx prisma/seed.ts",
+    "user:create": "tsx scripts/create-user.ts",
+    "backup": "node scripts/backup.mjs",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "postinstall": "prisma generate"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^22.19.0",
+    "@types/pg": "^8.23.1",
+    "dotenv": "^18.0.8",
+    "esbuild": "^0.28.2",
+    "eslint": "^10.1.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.13.0",
+    "prisma": "7.10.1",
+    "tsx": "^4.23.15",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.71.2",
+    "vitest": "^5.0.5"
+  },
+  "overrides": {
+    "uuid": "^11.1.1"
+  }
+}

@@ -1,0 +1,152 @@
+import { useQuery } from '@tanstack/react-query';
+import { Link, useParams } from 'react-router-dom';
+import { BORROWER_KIND_LABEL, type BorrowerDetail } from '@saac/shared';
+import { apiGet } from '../api/client';
+import { useIsAdmin } from '../auth/AuthContext';
+import { EmptyState, ErrorText, Glyph, Loading, PageHead } from '../components/ui';
+import { fmtDate } from '../lib/format';
+
+export function Person() {
+  const { id = '' } = useParams();
+  const isAdmin = useIsAdmin();
+  const q = useQuery({ queryKey: ['borrower', id], queryFn: () => apiGet<BorrowerDetail>(`/api/borrowers/${id}`) });
+  if (q.isLoading) return <Loading />;
+  if (!q.data) return <ErrorText error={q.error} />;
+  const p = q.data;
+  const currentClasses = p.classes;
+
+  return (
+    <>
+      <PageHead
+        title={`${p.firstName} ${p.lastName}`}
+        sub={
+          <span className="row" style={{ gap: 'var(--space-2)' }}>
+            <span className="num">PID {p.pid}</span>
+            <span>· {BORROWER_KIND_LABEL[p.kind]}</span>
+            {p.team && <span>· {p.team.name}</span>}
+            {p.active ? <span className="pill ok">Active</span> : <span className="pill">Inactive</span>}
+            {p.kind === 'ATHLETE' && (p.onScholarship ? <span className="pill info">On scholarship</span> : <span className="pill warn">Not on scholarship</span>)}
+          </span>
+        }
+        actions={
+          isAdmin && (
+            <Link className="btn" to={`/people/${p.id}/edit`}>
+              Edit person
+            </Link>
+          )
+        }
+      />
+
+      <div className="grid-2">
+        <section className="card">
+          <div className="card-head">
+            <h2>Holding now</h2>
+            <span className="small muted num">{p.holding.length} open</span>
+          </div>
+          {p.holdingCounts.length > 0 && (
+            <div className="row" style={{ gap: 6 }}>
+              {p.holdingCounts.map((c) => (
+                <span key={c.label} className="pill lg num">
+                  {c.label} · {c.count}
+                </span>
+              ))}
+            </div>
+          )}
+          {p.holding.length === 0 ? (
+            <EmptyState>Nothing out right now.</EmptyState>
+          ) : (
+            <div className="table-wrap">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Item</th>
+                    <th>Tag</th>
+                    <th>Term</th>
+                    <th>Due</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {p.holding.map((h) => (
+                    <tr key={h.id}>
+                      <td>
+                        {h.label}
+                        <div className="xsmall muted">{h.typeName}</div>
+                      </td>
+                      <td className="tag">{h.tag}</td>
+                      <td>{h.termCode}</td>
+                      <td className="num">
+                        {h.pastDue ? (
+                          <span className="pill err">
+                            <Glyph tone="warn" small /> Past due · {fmtDate(h.dueDate, { month: 'short', day: 'numeric' })}
+                          </span>
+                        ) : (
+                          fmtDate(h.dueDate, { month: 'short', day: 'numeric' })
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
+        <section className="card">
+          <h2>Contact</h2>
+          <dl className="dl">
+            <dt>Email</dt>
+            <dd>{p.email ?? <span className="muted">No email on file. Reach them by phone or through the coach.</span>}</dd>
+            <dt>Phone</dt>
+            <dd className="num">{p.phone ?? <span className="muted">No phone on file</span>}</dd>
+            <dt>Team</dt>
+            <dd>{p.team?.name ?? <span className="muted">No team</span>}</dd>
+            <dt>Scholarship</dt>
+            <dd>{p.onScholarship ? 'Yes' : 'No'}</dd>
+            <dt>On file since</dt>
+            <dd className="num">{fmtDate(p.createdAt)}</dd>
+          </dl>
+        </section>
+      </div>
+
+      <div className="grid-2">
+        <section className="card">
+          <h2>Classes</h2>
+          {currentClasses.length === 0 ? (
+            <EmptyState>No classes on file. Class schedules come in with the term book list.</EmptyState>
+          ) : (
+            <div className="row" style={{ gap: 6 }}>
+              {currentClasses.map((c) => (
+                <span key={`${c.termCode}-${c.subject}-${c.catalog}-${c.section}`} className="pill lg num">
+                  {c.termCode} · {c.subject} {c.catalog} {c.section}
+                </span>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="card">
+          <h2>Past terms</h2>
+          {p.past.length === 0 ? (
+            <EmptyState>No returned or closed items yet.</EmptyState>
+          ) : (
+            p.past.map((t) => (
+              <div key={t.termCode} className="stack" style={{ gap: 'var(--space-1)' }}>
+                <h3>{t.termCode}</h3>
+                {t.loans.map((l) => (
+                  <div key={l.id} className="row small" style={{ justifyContent: 'space-between' }}>
+                    <span>
+                      {l.label} <span className="muted num">· {l.tag}</span>
+                    </span>
+                    <span className="muted num">
+                      {l.outcome === 'RETURNED' ? 'Returned' : 'Not for return'} {fmtDate(l.closedAt, { month: 'short', day: 'numeric' })}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ))
+          )}
+        </section>
+      </div>
+    </>
+  );
+}

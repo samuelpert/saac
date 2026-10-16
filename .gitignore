@@ -1,0 +1,13 @@
+node_modules/
+dist/
+generated/
+apps/api/src/generated/
+.env
+.env.*
+!.env.example
+data-private/*
+!data-private/README.md
+backups/
+*.log
+coverage/
+.DS_Store
