@@ -117,12 +117,12 @@ export interface DashboardResponse {
     pastDue: Widget<PastDueTile>;
     holds: Widget<HoldsTile>;
     deadline: Widget<DeadlineTile | null>;
-    attention: Widget<AttentionRow[]>;
     teams: Widget<TeamProgressRow[]>;
     books: Widget<BooksWidget>;
     inventory: Widget<InventoryWidget>;
+    activity: Widget<ActivityRow[]>;
     /** Admin only. Absent for staff. */
-    activity?: Widget<ActivityRow[]>;
+    attention?: Widget<AttentionRow[]>;
     imports?: Widget<ImportSummary[]>;
     health?: Widget<HealthWidget>;
   };
@@ -143,6 +143,8 @@ export interface PersonRef {
 export interface LoanListRow {
   id: string;
   kind: 'book' | 'tech';
+  /** The tech item or book copy, for its history page. */
+  itemId: string;
   borrower: PersonRef;
   label: string;
   tag: string;
@@ -158,4 +160,40 @@ export interface HoldListRow {
   note: string | null;
   updatedAt: string;
   openTech: number;
+}
+
+// ---- Item lookup and history ------------------------------------------------------
+
+/** Derived, never stored. A copy is ASSIGNED when it is reserved for a student's need. */
+export type ItemState = 'AVAILABLE' | 'OUT' | 'ASSIGNED' | 'IN_REPAIR' | 'SURPLUS' | 'RETIRED';
+
+export interface ItemMatch {
+  id: string;
+  kind: 'tech' | 'book';
+  tag: string;
+  name: string;
+  typeName: string;
+  state: ItemState;
+  /** Who has it now, when it is out. */
+  holder: PersonRef | null;
+  dueDate: string | null;
+  pastDue: boolean;
+}
+
+export interface ItemLoanHistoryRow {
+  id: string;
+  borrower: PersonRef;
+  termCode: string;
+  checkedOutAt: string;
+  dueDate: string;
+  closedAt: string | null;
+  outcome: 'RETURNED' | 'NOT_FOR_RETURN' | null;
+  conditionOut: string | null;
+  conditionIn: string | null;
+  notes: string | null;
+}
+
+export interface ItemHistory extends ItemMatch {
+  statusNote: string | null;
+  loans: ItemLoanHistoryRow[];
 }

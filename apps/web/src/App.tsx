@@ -8,6 +8,7 @@ import { CheckedOut } from './pages/CheckedOut';
 import { Home } from './pages/Home';
 import { ImportDetail, Imports } from './pages/Imports';
 import { ImportStudents } from './pages/ImportStudents';
+import { ItemPage } from './pages/ItemPage';
 import { ChangePassword, Login } from './pages/Login';
 import { People } from './pages/People';
 import { Person } from './pages/Person';
@@ -34,6 +35,7 @@ export function App() {
         <Route path="people/:id" element={<Person />} />
         <Route path="people/:id/edit" element={<AdminOnly><PersonForm /></AdminOnly>} />
         <Route path="checked-out/:kind" element={<CheckedOut />} />
+        <Route path="items/:kind/:id" element={<ItemPage />} />
         <Route path="check-out" element={<Placeholder title="Check out" phase={4} what="Scan a person, scan their books and tech into a cart, and print the receipt." />} />
         <Route path="check-in" element={<Placeholder title="Check in" phase={4} what="Scan an item or copy to find its loan and check it in." />} />
         <Route path="student-books" element={<Placeholder title="Student books" phase={3} what="Each student's book needs for the term, assigning copies, the pull list and the shortage report." />} />

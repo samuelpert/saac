@@ -1,36 +1,22 @@
 import { useEffect, useRef, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import type { BorrowerSummary, SearchResponse } from '@saac/shared';
+import type { BorrowerDetail, BorrowerSummary, ItemHistory, ItemMatch, SearchResponse } from '@saac/shared';
 import { apiGet } from '../api/client';
 import { useIsAdmin } from '../auth/AuthContext';
 import { beep } from '../lib/beep';
-import { PersonName } from './PersonCard';
-import { EligibilityPill, Feedback, type FeedbackMessage } from './ui';
+import { fmtDate } from '../lib/format';
+import { ItemStatePill, TagLink } from './ItemBits';
+import { CopyButton, PersonName } from './PersonCard';
+import { EligibilityPill, EmptyState, Feedback, Glyph, type FeedbackMessage } from './ui';
 
-/** Feedback for a PID that matched one person, worded by what they can borrow. */
-function foundMessage(p: BorrowerSummary): Pick<FeedbackMessage, 'tone' | 'word' | 'text'> {
-  const who = `PID ${p.pid} · ${p.firstName} ${p.lastName}`;
-  switch (p.eligibility) {
-    case 'ELIGIBLE':
-      return { tone: 'ok', word: 'Found', text: `${who} · can borrow books and tech in ${p.eligibilityTerm}` };
-    case 'TECH_ONLY':
-      return { tone: 'ok', word: 'Found', text: `${who} · staff, can borrow tech only` };
-    case 'STAFF_INACTIVE':
-      return { tone: 'warn', word: 'Inactive staff', text: `${who} · cannot borrow until an admin switches them back on` };
-    case 'NO_SCHOLARSHIP':
-      return { tone: 'warn', word: 'Not on scholarship', text: who };
-    case 'TERM_ENDED':
-      return { tone: 'warn', word: `${p.eligibilityTerm} ended`, text: `${who} · cannot borrow until the next term list is imported` };
-    case 'NOT_IN_TERM':
-      return { tone: 'warn', word: `Not in ${p.eligibilityTerm}`, text: who };
-    default:
-      return { tone: 'info', word: 'Found', text: who };
-  }
-}
+type Selected = { kind: 'person'; id: string } | { kind: 'item'; item: ItemMatch } | null;
 
 /**
- * The scan or search field. A barcode scanner types like a keyboard and presses Enter,
+ * The one search on Home. A Panther ID or a name finds a student and shows what they hold.
+ * A tech tag or name ("L-0942", "laptop 942") or a book copy tag finds the item and shows
+ * who has it and its history. A barcode scanner types like a keyboard and presses Enter,
  * so Enter submits, feedback shows at once, and focus stays in the field.
  */
 export function ScanBox({ term }: { term?: string }) {
@@ -38,59 +24,80 @@ export function ScanBox({ term }: { term?: string }) {
   const ref = useRef<HTMLInputElement>(null);
   const [value, setValue] = useState('');
   const [fb, setFb] = useState<FeedbackMessage | null>(null);
-  const [matches, setMatches] = useState<BorrowerSummary[]>([]);
+  const [people, setPeople] = useState<BorrowerSummary[]>([]);
+  const [items, setItems] = useState<ItemMatch[]>([]);
+  const [selected, setSelected] = useState<Selected>(null);
 
   useEffect(() => ref.current?.focus(), []);
 
+  function clear() {
+    setFb(null);
+    setPeople([]);
+    setItems([]);
+    setSelected(null);
+  }
+
   async function run(raw: string) {
     const q = raw.trim();
+    clear();
     if (!q) return;
+    const termQs = term ? `&term=${term}` : '';
     let r: SearchResponse;
+    let found: ItemMatch[];
     try {
-      r = await apiGet<SearchResponse>(`/api/borrowers/search?q=${encodeURIComponent(q)}${term ? `&term=${term}` : ''}`);
+      // Digits are a Panther ID; anything else may be a person or an item, so ask for both.
+      const digitsOnly = /^\d+$/.test(q);
+      [r, found] = await Promise.all([
+        apiGet<SearchResponse>(`/api/borrowers/search?q=${encodeURIComponent(q)}${termQs}`),
+        digitsOnly ? Promise.resolve([]) : apiGet<ItemMatch[]>(`/api/items/lookup?q=${encodeURIComponent(q)}`),
+      ]);
     } catch {
       setFb({ tone: 'err', word: 'Search failed', text: 'The server did not answer. Try again.' });
       beep('err');
       return;
     }
-    let next: FeedbackMessage;
-    let list: BorrowerSummary[] = [];
+
     const one = r.matches[0];
-    switch (r.kind) {
-      case 'pid':
-        next = one
-          ? { ...foundMessage(one), action: { label: 'Open person page', href: `/people/${one.id}` } }
-          : { tone: 'err', word: 'Not found', text: `No person has PID ${q}.`, action: isAdmin ? { label: 'Add person', href: `/people/new?pid=${q}` } : undefined };
-        break;
-      case 'pid-short':
-        next = {
-          tone: 'warn',
-          word: 'Check PID',
-          text: `PIDs have 7 digits. Did you mean ${r.suggestedPid}?${one ? ` That is ${one.firstName} ${one.lastName}.` : ''}`,
-          action: one ? { label: 'Open person page', href: `/people/${one.id}` } : { label: `Search ${r.suggestedPid}`, onClick: () => void submit(r.suggestedPid!) },
-        };
-        break;
-      case 'digits':
-        list = r.matches;
-        next = list.length
-          ? { tone: 'info', word: `${list.length} PIDs start with ${q}`, text: 'Keep typing, or pick a person below.' }
-          : { tone: 'err', word: 'Not found', text: `“${q}” is not a PID or a known tag.` };
-        break;
-      case 'tag':
-        next = { tone: 'info', word: 'Tags not ready', text: 'Item and copy tags work once the barcode step is done.' };
-        break;
-      case 'name':
-        list = r.matches;
-        next = list.length
-          ? { tone: 'ok', word: `${list.length === 20 ? '20+' : list.length} ${list.length === 1 ? 'match' : 'matches'}`, text: `People matching “${q}”`, action: { label: 'See all results', href: `/people?q=${encodeURIComponent(q)}&active=all` } }
-          : { tone: 'err', word: 'Not found', text: `Nobody matches “${q}”.` };
-        break;
-      default:
-        return;
+    if (r.kind === 'pid-short') {
+      setFb({
+        tone: 'warn',
+        word: 'Check PID',
+        text: `Panther IDs have 7 digits. Did you mean ${r.suggestedPid}?`,
+        action: one ? { label: `Show ${r.suggestedPid}`, onClick: () => void submit(r.suggestedPid!) } : undefined,
+      });
+      beep('warn');
+      return;
     }
-    setFb(next);
-    setMatches(list.slice(0, 8));
-    beep(next.tone);
+    if (r.kind === 'pid' && !one) {
+      setFb({ tone: 'err', word: 'Not found', text: `No student has Panther ID ${q}.`, action: isAdmin ? { label: 'Add person', href: `/people/new?pid=${q}` } : undefined });
+      beep('err');
+      return;
+    }
+    if (r.matches.length === 1 && found.length === 0) {
+      setSelected({ kind: 'person', id: one!.id });
+      beep(one!.eligibility === 'ELIGIBLE' || one!.eligibility === 'TECH_ONLY' ? 'ok' : 'warn');
+      return;
+    }
+    if (found.length === 1 && r.matches.length === 0) {
+      setSelected({ kind: 'item', item: found[0]! });
+      beep('ok');
+      return;
+    }
+    if (r.matches.length === 0 && found.length === 0) {
+      setFb({ tone: 'err', word: 'Not found', text: `No student or item matches “${q}”.` });
+      beep('err');
+      return;
+    }
+    setPeople(r.matches.slice(0, 8));
+    setItems(found);
+    const parts = [r.matches.length && `${r.matches.length === 20 ? '20+' : r.matches.length} ${r.matches.length === 1 ? 'person' : 'people'}`, found.length && `${found.length} ${found.length === 1 ? 'item' : 'items'}`].filter(Boolean);
+    setFb({
+      tone: 'ok',
+      word: parts.join(' · '),
+      text: `matching “${q}”. Pick one.`,
+      action: r.matches.length > 8 ? { label: 'See all people', href: `/people?q=${encodeURIComponent(q)}` } : undefined,
+    });
+    beep('ok');
   }
 
   async function submit(q: string) {
@@ -106,8 +113,8 @@ export function ScanBox({ term }: { term?: string }) {
         <input
           ref={ref}
           value={value}
-          aria-label="Scan or search"
-          placeholder="Scan a tag, or type a PID or name, then press Enter"
+          aria-label="Search students and items"
+          placeholder="Type a Panther ID, a name, or a tech tag or name, then press Enter"
           autoComplete="off"
           spellCheck={false}
           onChange={(e) => setValue(e.target.value)}
@@ -116,34 +123,190 @@ export function ScanBox({ term }: { term?: string }) {
               e.preventDefault();
               void submit(value);
             } else if (e.key === 'Escape') {
-              setFb(null);
-              setMatches([]);
+              clear();
               setValue('');
             }
           }}
         />
       </div>
-      {fb && (
+      {(fb || selected) && (
         <div className="stack" style={{ flexBasis: '100%' }}>
-          <Feedback fb={fb} />
-          {matches.length > 0 && (
-            <div className="results" aria-label="Matching people">
-              {matches.map((m) => (
+          {fb && <Feedback fb={fb} />}
+          {(people.length > 0 || items.length > 0) && (
+            <div className="results" aria-label="Matches">
+              {people.map((m) => (
                 <div key={m.id} className="result-row">
                   <span className="num secondary">{m.pid}</span>
                   <PersonName person={{ ...m, team: m.team?.name ?? null }} />
                   <span className="muted small">{m.team?.name ?? ''}</span>
                   <span className="spacer" />
                   <EligibilityPill status={m.eligibility} term={m.eligibilityTerm} />
-                  <Link className="small medium" to={`/people/${m.id}`}>
-                    Open ›
-                  </Link>
+                  <button type="button" className="btn tertiary small" onClick={() => setSelected({ kind: 'person', id: m.id })}>
+                    Show items ›
+                  </button>
+                </div>
+              ))}
+              {items.map((it) => (
+                <div key={`${it.kind}-${it.id}`} className="result-row">
+                  <TagLink kind={it.kind} id={it.id} tag={it.tag} />
+                  <span className="medium">{it.name}</span>
+                  <span className="muted small">{it.typeName}</span>
+                  <span className="spacer" />
+                  <ItemStatePill state={it.state} pastDue={it.pastDue} />
+                  <button type="button" className="btn tertiary small" onClick={() => setSelected({ kind: 'item', item: it })}>
+                    Show ›
+                  </button>
                 </div>
               ))}
             </div>
           )}
+          {selected?.kind === 'person' && <PersonPanel id={selected.id} />}
+          {selected?.kind === 'item' && <ItemPanel item={selected.item} />}
         </div>
       )}
     </>
+  );
+}
+
+/** A student and everything they hold now, books and tech. */
+function PersonPanel({ id }: { id: string }) {
+  const q = useQuery({ queryKey: ['borrower', id], queryFn: () => apiGet<BorrowerDetail>(`/api/borrowers/${id}`) });
+  const p = q.data;
+  if (!p) return <section className="card">{q.isError ? 'This person could not load.' : 'Loading…'}</section>;
+  return (
+    <section className="card" aria-label="Student">
+      <div className="card-head">
+        <div className="stack" style={{ gap: 2 }}>
+          <h2>
+            {p.firstName} {p.lastName}
+          </h2>
+          <span className="row small secondary" style={{ gap: 'var(--space-2)' }}>
+            <span className="num">Panther ID {p.pid}</span>
+            <CopyButton value={p.pid} label="Copy Panther ID" />
+            {p.team && <span>· {p.team.name}</span>}
+            <EligibilityPill status={p.eligibility} term={p.eligibilityTerm} />
+          </span>
+        </div>
+        <div className="row">
+          <Link className="btn" to="/check-out">
+            Check out
+          </Link>
+          <Link className="btn" to="/check-in">
+            Check in
+          </Link>
+          <Link to={`/people/${p.id}`}>Person page ›</Link>
+        </div>
+      </div>
+      {p.holding.length === 0 ? (
+        <EmptyState>Nothing out right now.</EmptyState>
+      ) : (
+        <div className="table-wrap">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Holding now</th>
+                <th>Type</th>
+                <th>Tag</th>
+                <th>Term</th>
+                <th>Due</th>
+              </tr>
+            </thead>
+            <tbody>
+              {p.holding.map((h) => (
+                <tr key={h.id}>
+                  <td>{h.label}</td>
+                  <td>{h.kind === 'book' ? 'Book' : h.typeName}</td>
+                  <td className="tag">
+                    <TagLink kind={h.kind} id={h.itemId} tag={h.tag} />
+                  </td>
+                  <td>{h.termCode}</td>
+                  <td className="num">
+                    {h.pastDue ? (
+                      <span className="pill err">
+                        <Glyph tone="warn" small /> Past due · {fmtDate(h.dueDate, { month: 'short', day: 'numeric' })}
+                      </span>
+                    ) : (
+                      fmtDate(h.dueDate, { month: 'short', day: 'numeric' })
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+/** An item: who has it now and its latest checkouts. */
+function ItemPanel({ item }: { item: ItemMatch }) {
+  const q = useQuery({ queryKey: ['item', item.kind, item.id], queryFn: () => apiGet<ItemHistory>(`/api/items/${item.kind}/${item.id}`) });
+  const h = q.data;
+  return (
+    <section className="card" aria-label="Item">
+      <div className="card-head">
+        <div className="stack" style={{ gap: 2 }}>
+          <h2>{item.name}</h2>
+          <span className="row small secondary" style={{ gap: 'var(--space-2)' }}>
+            <span className="num">{item.tag}</span>
+            <span>· {item.typeName}</span>
+            <ItemStatePill state={item.state} pastDue={item.pastDue} />
+          </span>
+        </div>
+        <Link to={`/items/${item.kind}/${item.id}`}>Full history ›</Link>
+      </div>
+      {item.holder ? (
+        <p>
+          With <PersonName person={item.holder} /> <span className="num secondary">· {item.holder.pid}</span>
+          {item.dueDate && <span className={item.pastDue ? 'danger-text' : 'secondary'}> · due {fmtDate(item.dueDate)}</span>}
+        </p>
+      ) : (
+        <p className="secondary">Nobody has it right now.</p>
+      )}
+      {h && h.loans.length > 0 && <HistoryTable loans={h.loans.slice(0, 5)} />}
+      {h && h.loans.length === 0 && <EmptyState>Never checked out.</EmptyState>}
+    </section>
+  );
+}
+
+export function HistoryTable({ loans }: { loans: ItemHistory['loans'] }) {
+  return (
+    <div className="table-wrap">
+      <table className="table">
+        <thead>
+          <tr>
+            <th>Person</th>
+            <th>Panther ID</th>
+            <th>Term</th>
+            <th>Out</th>
+            <th>Due</th>
+            <th>Back</th>
+            <th>Condition</th>
+          </tr>
+        </thead>
+        <tbody>
+          {loans.map((l) => (
+            <tr key={l.id}>
+              <td>
+                <PersonName person={l.borrower} />
+              </td>
+              <td className="pid">{l.borrower.pid}</td>
+              <td>{l.termCode}</td>
+              <td className="num">{fmtDate(l.checkedOutAt)}</td>
+              <td className="num">{fmtDate(l.dueDate)}</td>
+              <td className="num">
+                {l.closedAt ? (
+                  `${l.outcome === 'NOT_FOR_RETURN' ? 'Not for return · ' : ''}${fmtDate(l.closedAt)}`
+                ) : (
+                  <span className="pill warn">Still out</span>
+                )}
+              </td>
+              <td className="small secondary">{[l.conditionOut && `Out: ${l.conditionOut}`, l.conditionIn && `In: ${l.conditionIn}`, l.notes].filter(Boolean).join(' · ')}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

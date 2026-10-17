@@ -75,6 +75,7 @@ export class LoansService {
     return loans.map((l) => ({
       id: l.id,
       kind: 'book',
+      itemId: l.copyId,
       borrower: borrowerRef(l.borrower),
       label: l.copy.book.title,
       tag: l.copy.copyTag,
@@ -95,6 +96,7 @@ export class LoansService {
     return loans.map((l) => ({
       id: l.id,
       kind: 'tech',
+      itemId: l.itemId,
       borrower: borrowerRef(l.borrower),
       label: l.item.name,
       tag: l.item.assetTag,

@@ -41,30 +41,6 @@ export function Home() {
             {d && ` · Updated ${fmtTime(d.generatedAt)}`} · refreshes every 60&nbsp;s
           </span>
         </div>
-        <div className="row" aria-label="Quick actions">
-          <Link className="btn primary" to="/check-out">
-            Check out
-          </Link>
-          <Link className="btn" to="/check-in">
-            Check in
-          </Link>
-          <Link className="btn" to={withTerm('/checked-out/items')}>
-            Checked-out items
-          </Link>
-          <Link className="btn" to={withTerm('/checked-out/books')}>
-            Checked-out books
-          </Link>
-          {isAdmin && (
-            <>
-              <Link className="btn" to="/admin/imports/students">
-                Import students
-              </Link>
-              <Link className="btn" to="/admin/imports">
-                Import books
-              </Link>
-            </>
-          )}
-        </div>
       </div>
 
       <div className="row">
@@ -171,17 +147,19 @@ function Dashboard({ d, isAdmin, withTerm }: { d: DashboardResponse; isAdmin: bo
       </div>
 
       <div className="grid-2">
-        <section className="card tight">
-          <div className="card-head" style={{ marginBottom: 'var(--space-2)' }}>
-            <h2>Needs attention</h2>
-            {w.attention.ok && <span className="small muted num">{w.attention.data.length || ''}</span>}
-          </div>
-          <WidgetBody widget={w.attention}>
-            {(rows) =>
-              rows.length === 0 ? <p className="secondary" style={{ margin: 'var(--space-2) 0' }}>Nothing needs you right now.</p> : rows.map((r) => <AttentionLink key={r.key} r={r} />)
-            }
-          </WidgetBody>
-        </section>
+        {w.attention && (
+          <section className="card tight">
+            <div className="card-head" style={{ marginBottom: 'var(--space-2)' }}>
+              <h2>Needs attention</h2>
+              {w.attention.ok && <span className="small muted num">{w.attention.data.length || ''}</span>}
+            </div>
+            <WidgetBody widget={w.attention}>
+              {(rows) =>
+                rows.length === 0 ? <p className="secondary" style={{ margin: 'var(--space-2) 0' }}>Nothing needs you right now.</p> : rows.map((r) => <AttentionLink key={r.key} r={r} />)
+              }
+            </WidgetBody>
+          </section>
+        )}
         <TeamProgress widget={w.teams} withTerm={withTerm} />
       </div>
 
@@ -280,7 +258,7 @@ function Dashboard({ d, isAdmin, withTerm }: { d: DashboardResponse; isAdmin: bo
         </section>
       </div>
 
-      {isAdmin && <AdminRow d={d} />}
+      <BottomRow d={d} isAdmin={isAdmin} />
     </>
   );
 }
@@ -373,7 +351,8 @@ function TeamBar({ t, pct, href }: { t: TeamProgressRow; pct: (n: number, total:
   );
 }
 
-function AdminRow({ d }: { d: DashboardResponse }) {
+/** Recent activity for everyone; imports and system health for admins only. */
+function BottomRow({ d, isAdmin }: { d: DashboardResponse; isAdmin: boolean }) {
   const w = d.widgets;
   const health = w.health;
   const stale = health?.ok ? health.data.stale : false;
@@ -382,7 +361,7 @@ function AdminRow({ d }: { d: DashboardResponse }) {
       <section className="card tight">
         <div className="card-head" style={{ marginBottom: 6 }}>
           <h2>Recent activity</h2>
-          <Link to="/admin/audit">Audit log ›</Link>
+          {isAdmin && <Link to="/admin/audit">Audit log ›</Link>}
         </div>
         <WidgetBody widget={w.activity}>
           {(rows) =>
@@ -406,57 +385,60 @@ function AdminRow({ d }: { d: DashboardResponse }) {
         </WidgetBody>
       </section>
 
-      <section className="card">
-        <div className="card-head">
-          <h2>Imports</h2>
-          <Link to="/admin/imports">History ›</Link>
-        </div>
-        <WidgetBody widget={w.imports}>
-          {(rows) =>
-            rows.length === 0 ? (
-              <EmptyState action={<Link className="btn primary" to="/admin/imports/students">Import students</Link>}>No imports yet.</EmptyState>
-            ) : (
-              rows.map((im) => (
-                <div key={im.kind} className="import-box">
-                  <div className="row" style={{ justifyContent: 'space-between', alignItems: 'baseline' }}>
-                    <span className="strong">{im.kind}</span>
-                    <span className="xsmall secondary num">
-                      {fmtRelativeDay(im.at)} · {im.user}
-                    </span>
+      {isAdmin && (
+        <section className="card">
+          <div className="card-head">
+            <h2>Imports</h2>
+            <Link to="/admin/imports">History ›</Link>
+          </div>
+          <WidgetBody widget={w.imports}>
+            {(rows) =>
+              rows.length === 0 ? (
+                <EmptyState action={<Link className="btn primary" to="/admin/imports/students">Import students</Link>}>No imports yet.</EmptyState>
+              ) : (
+                rows.map((im) => (
+                  <div key={im.kind} className="import-box">
+                    <div className="row" style={{ justifyContent: 'space-between', alignItems: 'baseline' }}>
+                      <span className="strong">{im.kind}</span>
+                      <span className="xsmall secondary num">
+                        {fmtRelativeDay(im.at)} · {im.user}
+                      </span>
+                    </div>
+                    <div className="row" style={{ gap: 6 }}>
+                      <span className="pill on-subtle num">{fmtNumber(im.created)} created</span>
+                      <span className="pill on-subtle num">{fmtNumber(im.updated)} updated</span>
+                      <span className="pill on-subtle num">{fmtNumber(im.unchanged)} unchanged</span>
+                      {im.review > 0 && <span className="pill warn num">{fmtNumber(im.review)} to review</span>}
+                    </div>
                   </div>
-                  <div className="row" style={{ gap: 6 }}>
-                    <span className="pill on-subtle num">{fmtNumber(im.created)} created</span>
-                    <span className="pill on-subtle num">{fmtNumber(im.updated)} updated</span>
-                    <span className="pill on-subtle num">{fmtNumber(im.unchanged)} unchanged</span>
-                    {im.review > 0 && <span className="pill warn num">{fmtNumber(im.review)} to review</span>}
-                  </div>
-                </div>
-              ))
-            )
-          }
-        </WidgetBody>
-      </section>
+                ))
+              )
+            }
+          </WidgetBody>
+        </section>
+      )}
 
-      <section className={`card${stale ? ' danger' : ''}`}>
-        <div className="card-head">
-          <h2>System health</h2>
-          <Link to="/admin/backups">Backup details ›</Link>
-        </div>
-        <WidgetBody widget={health}>
-          {(h) => (
-            <>
-              <div className="row" style={{ gap: 10, color: stale ? 'var(--color-danger)' : 'var(--color-success)' }}>
-                {stale ? <Glyph tone="warn" /> : <CheckCircle2 size={22} strokeWidth={1.75} aria-hidden="true" />}
-                <span className="strong">{stale ? 'Backup is old' : 'Backups are current'}</span>
-              </div>
-              <div className="health-grid">
-                <span>Last backup</span>
-                <span className="health-value">{h.lastSuccess ? fmtRelativeDay(h.lastSuccess.at) : 'Never'}</span>
-                {h.lastAttempt && !h.lastAttempt.ok && (
-                  <>
-                    <span>Last attempt</span>
-                    <span className="health-value">Failed {fmtRelativeDay(h.lastAttempt.at)}</span>
-                  </>
+      {isAdmin && (
+        <section className={`card${stale ? ' danger' : ''}`}>
+          <div className="card-head">
+            <h2>System health</h2>
+            <Link to="/admin/backups">Backup details ›</Link>
+          </div>
+          <WidgetBody widget={health}>
+            {(h) => (
+              <>
+                <div className="row" style={{ gap: 10, color: stale ? 'var(--color-danger)' : 'var(--color-success)' }}>
+                  {stale ? <Glyph tone="warn" /> : <CheckCircle2 size={22} strokeWidth={1.75} aria-hidden="true" />}
+                  <span className="strong">{stale ? 'Backup is old' : 'Backups are current'}</span>
+                </div>
+                <div className="health-grid">
+                  <span>Last backup</span>
+                  <span className="health-value">{h.lastSuccess ? fmtRelativeDay(h.lastSuccess.at) : 'Never'}</span>
+                  {h.lastAttempt && !h.lastAttempt.ok && (
+                    <>
+                      <span>Last attempt</span>
+                      <span className="health-value">Failed {fmtRelativeDay(h.lastAttempt.at)}</span>
+                    </>
                 )}
                 <span>Backup location</span>
                 <span>{h.lastSuccess?.location ?? '—'}</span>
@@ -471,6 +453,7 @@ function AdminRow({ d }: { d: DashboardResponse }) {
           )}
         </WidgetBody>
       </section>
+      )}
     </div>
   );
 }

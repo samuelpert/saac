@@ -178,6 +178,8 @@ export interface BorrowerListResponse {
 export interface HeldLoan {
   id: string;
   kind: 'book' | 'tech';
+  /** The tech item or book copy, for its history page. */
+  itemId: string;
   label: string;
   tag: string;
   typeName: string;

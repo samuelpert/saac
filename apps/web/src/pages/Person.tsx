@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { BORROWER_KIND_LABEL, type BorrowerDetail } from '@saac/shared';
 import { apiGet } from '../api/client';
 import { useIsAdmin } from '../auth/AuthContext';
+import { TagLink } from '../components/ItemBits';
 import { CopyButton } from '../components/PersonCard';
 import { EligibilityPill, EmptyState, ErrorText, Feedback, Glyph, Loading, PageHead, TermTags } from '../components/ui';
 import { fmtDate } from '../lib/format';
@@ -84,7 +85,9 @@ export function Person() {
                         {h.label}
                         <div className="xsmall muted">{h.typeName}</div>
                       </td>
-                      <td className="tag">{h.tag}</td>
+                      <td className="tag">
+                        <TagLink kind={h.kind} id={h.itemId} tag={h.tag} />
+                      </td>
                       <td>{h.termCode}</td>
                       <td className="num">
                         {h.pastDue ? (

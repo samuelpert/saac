@@ -3,6 +3,7 @@ import type { Db } from '../db';
 import { AuthService } from './auth.service';
 import { BorrowersService } from './borrowers.service';
 import { DashboardService } from './dashboard.service';
+import { ItemsService } from './items.service';
 import { LoansService } from './loans.service';
 import { StudentImportService } from './studentImport/service';
 import { TermsService } from './terms.service';
@@ -19,6 +20,7 @@ export function createServices(db: Db, config: Pick<Config, 'SESSION_IDLE_MINUTE
     terms,
     borrowers: new BorrowersService(db, terms),
     loans: new LoansService(db),
+    items: new ItemsService(db),
     studentImport: new StudentImportService(db),
     dashboard: new DashboardService(db, terms, { backupStaleHours: config.BACKUP_STALE_HOURS, diskPath: config.BACKUP_DIR }),
   };

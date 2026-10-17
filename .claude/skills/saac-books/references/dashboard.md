@@ -8,7 +8,7 @@ One screen that answers "is everything okay, and what needs me today?" It is the
 
 ## 2. Who sees what
 
-`ADMIN` sees everything. `STAFF` sees the term selector, scan box, tiles, attention queue, and quick actions, but not recent activity, imports, system health, or user management. Sections marked (A) below are admin only. Both roles can open the hold list, and only `ADMIN` sees the action that applies a hold.
+`ADMIN` sees everything. `STAFF` sees the term selector, the search box, tiles, return progress, books this term, inventory health and recent activity, but not the attention queue, imports, system health, or user management (user decision, October 2026). There are no quick-action buttons on Home: the sidebar already has every one. Sections marked (A) below are admin only. Both roles can open the hold list, and only `ADMIN` sees the action that applies a hold.
 
 ## 3. Layout
 
@@ -30,7 +30,7 @@ One screen that answers "is everything okay, and what needs me today?" It is the
 +---------------------------------------------------------------+
 ```
 
-Quick actions (Check out, Check in, Checked-out items, Checked-out books, Import students, Import books) sit in the header or a side rail. Import buttons are admin only. The layout must fit a 1366 by 768 screen without scrolling the tiles off view.
+Home is first a search: a Panther ID or name shows the student and everything they hold now, books and tech, with Check out and Check in next to it; a tech tag or name ("L-0942", "laptop 942") or a book copy tag shows who has the item and its latest history, with a link to the full item history page. No quick-action buttons: the sidebar has them. The layout must fit a 1366 by 768 screen without scrolling the tiles off view.
 
 Styling follows `design.md`: white cards with continuous 20 px corners on a light gray page, a FIU Blue sidebar, and gold used only as a thin accent. See section 8 of that file for the dashboard specifics.
 
@@ -51,11 +51,11 @@ Panels:
 
 | Panel | Shows | Opens |
 | --- | --- | --- |
-| Needs attention | Only rows with a count above zero: the current term has ended and the next term's list is not in yet (A, says the next step: add the term, import its list, or make it current), import rows to review, past due with no reminder sent, reminders waiting for preview, the hold list ready after the return deadline, holds waiting for an admin, titles short, assignments not picked up, backup too old (A) | The screen that fixes it |
+| Needs attention (A) | Only rows with a count above zero: the current term has ended and the next term's list is not in yet (A, says the next step: add the term, import its list, or make it current), import rows to review, past due with no reminder sent, reminders waiting for preview, the hold list ready after the return deadline, holds waiting for an admin, titles short, assignments not picked up, backup too old (A) | The screen that fixes it |
 | Return progress by team | Per team: people with items out, loans returned versus total, sorted by most outstanding. A plain horizontal bar is enough | Checked-out items and books filtered to the team |
 | Books this term | Needs by state: needed, assigned, issued, waived. Short count highlighted | Student books, shortage report |
 | Inventory health | Tech by type: available, out, in repair, surplus, retired. Copies: available, assigned, out, retired | Inventory screens |
-| Recent activity (A) | Last 20 audit entries: time, user, action, short entity label | Audit log |
+| Recent activity | Last 20 audit entries: time, user, action, short entity label | Audit log |
 | Imports (A) | Last import of each kind: date, user, counts, unresolved review rows | Import history |
 | System health (A) | Last backup time and result, free disk space on the host, database size, app uptime | Backup details |
 

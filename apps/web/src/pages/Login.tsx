@@ -40,7 +40,7 @@ export function Login() {
       <form className="card auth-card" onSubmit={submit}>
         <Brand />
         <div className="stack" style={{ gap: 2 }}>
-          <h1>SAAC Books</h1>
+          <h1>SAAC Database</h1>
           <span className="secondary">Sign in to the desk.</span>
         </div>
         {notice && <Feedback fb={{ tone: 'info', word: 'Signed out', text: notice }} />}

@@ -75,7 +75,7 @@ Spec in `term-books.md`.
 | --- | --- | --- |
 | G1 | End-of-term reminder emails: one personalized email per person listing everything they still hold, books and technology, with the due dates. Preview first, staff can exclude people and send them, every send is logged. People with no email are listed for another route such as phone or coach | P2 |
 | G2 | Escalation per person per term, for technology only: reminded, coach notified, hold pending review, on hold, charged, resolved | P2 |
-| G3 | Hold list: the day after the term's return deadline (plus optional grace days, default 0) the system builds, by itself, the list of everyone who still has a tech item (laptop, charger, or other tech) open: person, team, coach, pending items, due date, days late, reminders sent. It exports to Excel in the shape the desk uses today. Staff check each row against the signed paper page, and only an admin marks a person on hold. The system never marks anyone by itself. Books have no holds. It is a tab on Checked-out items | P2 |
+| G3 | Hold list (proposed, phase 6: the list is computed, so a person who returns everything drops off it at once and the Excel export always matches; an applied hold is never removed by itself, because the real hold sits in FIU's system: the attention queue shows "holds ready to release" and an admin releases each one, which sets the stage to resolved and is audited): the day after the term's return deadline (plus optional grace days, default 0) the system builds, by itself, the list of everyone who still has a tech item (laptop, charger, or other tech) open: person, team, coach, pending items, due date, days late, reminders sent. It exports to Excel in the shape the desk uses today. Staff check each row against the signed paper page, and only an admin marks a person on hold. The system never marks anyone by itself. Books have no holds. It is a tab on Checked-out items | P2 |
 | G4 | Optional charge amount typed on the escalation record | P3 |
 | G5 | One-click reminder: a button on a person or on the hold list that creates the reminder and emails it in one step. Later, low priority. Needs the sending route from open question 10 | P3 |
 
@@ -128,9 +128,9 @@ Spec in `dashboard.md`.
 | ID | Feature | P |
 | --- | --- | --- |
 | K1 | Admin home: tiles, attention queue, return progress by team, books this term, inventory health, recent activity, imports, system health | P1 |
-| K2 | Scan or search box on the home screen: a PID or name finds the person, and item or copy tags work once the barcode step is done | P1 |
-| K3 | Attention queue: everything that needs a human today, each row a link to the fix | P1 |
-| K4 | Staff home: the same without recent activity, imports, system health, or user management | P1 |
+| K2 | One search box on Home: a PID or name shows the student and what they hold now; a tech tag or name, or a book copy tag, shows who has the item and its history. Scanned labels work the same way once the barcode step is done | P1 |
+| K3 | Attention queue, admin only: everything that needs a human today, each row a link to the fix | P1 |
+| K4 | Staff home: the same without the attention queue, imports, system health, or user management. Recent activity is shown to staff too | P1 |
 
 ## 2. The barcode step (pending)
 

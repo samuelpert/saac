@@ -88,11 +88,11 @@ export class DashboardService {
       this.safe('pastDue', () => this.pastDue(termId, now)),
       this.safe('holds', () => this.holds(termId)),
       this.safe('deadline', () => this.deadline(term, now)),
-      this.safe('attention', () => this.attention(term, isAdmin, now)),
+      isAdmin ? this.safe('attention', () => this.attention(term, isAdmin, now)) : undefined,
       this.safe('teams', () => this.teams(termId, now)),
       this.safe('books', () => this.books(termId)),
       this.safe('inventory', () => this.inventory()),
-      isAdmin ? this.safe('activity', () => this.activity()) : undefined,
+      this.safe('activity', () => this.activity()),
       isAdmin ? this.safe('imports', () => this.imports()) : undefined,
       isAdmin ? this.safe('health', () => this.health(now)) : undefined,
     ]);
@@ -110,11 +110,11 @@ export class DashboardService {
         pastDue,
         holds,
         deadline,
-        attention,
         teams,
         books,
         inventory,
-        ...(isAdmin ? { activity, imports, health } : {}),
+        activity,
+        ...(isAdmin ? { attention, imports, health } : {}),
       },
     };
   }

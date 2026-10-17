@@ -146,7 +146,7 @@ describe.skipIf(!hasDb)('dashboard', () => {
   });
 
   it('the attention queue only lists rows above zero', async () => {
-    const rows = data((await load()).widgets.attention);
+    const rows = data((await load()).widgets.attention!);
     expect(rows.every((r) => r.count > 0)).toBe(true);
     expect(rows.find((r) => r.key === 'past-due-no-reminder')?.count).toBe(2);
     expect(rows.find((r) => r.key === 'holds-admin')?.count).toBe(1);
@@ -154,13 +154,13 @@ describe.skipIf(!hasDb)('dashboard', () => {
     expect(rows.find((r) => r.key === 'backup-old')).toBeUndefined();
   });
 
-  it('staff get no admin widgets and no admin attention rows', async () => {
+  it('staff see recent activity but not the attention queue, imports or system health', async () => {
     const d = await load(desk);
     expect(d.isAdmin).toBe(false);
-    expect(d.widgets.activity).toBeUndefined();
+    expect(d.widgets.activity?.ok).toBe(true);
+    expect(d.widgets.attention).toBeUndefined();
     expect(d.widgets.imports).toBeUndefined();
     expect(d.widgets.health).toBeUndefined();
-    expect(data(d.widgets.attention).some((r) => ['holds-admin', 'import-review', 'backup-old'].includes(r.key))).toBe(false);
   });
 
   it('one failing widget leaves the others working', async () => {
@@ -184,7 +184,12 @@ describe.skipIf(!hasDb)('dashboard', () => {
     const d = await load();
     expect(data(d.widgets.health).stale).toBe(true);
     expect(data(d.widgets.health).lastAttempt?.ok).toBe(false);
-    expect(data(d.widgets.attention).find((r) => r.key === 'backup-old')?.tone).toBe('danger');
+    expect(data(d.widgets.attention!).find((r) => r.key === 'backup-old')?.tone).toBe('danger');
+  });
+
+  it('recent activity shows no contact details to staff either', async () => {
+    const rows = data((await load(desk)).widgets.activity);
+    expect(JSON.stringify(rows)).not.toMatch(/@|\b\d{10}\b/);
   });
 
   it('a past term is flagged read-only and scopes its numbers', async () => {
@@ -258,7 +263,7 @@ describe.skipIf(!hasDb)('after the return deadline', () => {
 
   const row = async (who = admin) => {
     const d = (await who.get('/api/dashboard')).body as DashboardResponse;
-    return data(d.widgets.attention).find((r) => r.key === 'term-ended');
+    return d.widgets.attention ? data(d.widgets.attention).find((r) => r.key === 'term-ended') : undefined;
   };
 
   it('tells an admin what to do next, step by step', async () => {

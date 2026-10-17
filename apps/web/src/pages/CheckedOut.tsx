@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import type { HoldListRow, LoanListRow, TeamRef, TermRow } from '@saac/shared';
 import { apiGet } from '../api/client';
+import { TagLink } from '../components/ItemBits';
 import { PersonName } from '../components/PersonCard';
 import { EmptyState, ErrorText, Glyph, PageHead } from '../components/ui';
 import { fmtDate, plural } from '../lib/format';
@@ -134,7 +135,9 @@ function LoanTable({ rows, showKind }: { rows: LoanListRow[]; showKind: boolean 
               <td>{r.borrower.team ?? <span className="muted">—</span>}</td>
               {showKind && <td>{r.kind === 'book' ? 'Book' : r.typeName}</td>}
               <td>{r.label}</td>
-              <td className="tag">{r.tag}</td>
+              <td className="tag">
+                <TagLink kind={r.kind} id={r.itemId} tag={r.tag} />
+              </td>
               <td className="num">
                 {r.pastDue ? (
                   <span className="pill err">

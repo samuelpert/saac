@@ -161,6 +161,7 @@ export class BorrowersService {
         .map((l) => ({
           id: l.id,
           kind: 'tech' as const,
+          itemId: l.itemId,
           label: l.item.name,
           tag: l.item.assetTag,
           typeName: l.item.type.name,
@@ -174,6 +175,7 @@ export class BorrowersService {
         .map((l) => ({
           id: l.id,
           kind: 'book' as const,
+          itemId: l.copyId,
           label: l.copy.book.title,
           tag: l.copy.copyTag,
           typeName: 'Books',

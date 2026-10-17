@@ -9,6 +9,7 @@ import { authRoutes } from './routes/auth';
 import { borrowerRoutes } from './routes/borrowers';
 import { dashboardRoutes } from './routes/dashboard';
 import { importRoutes } from './routes/imports';
+import { itemRoutes } from './routes/items';
 import { loanRoutes } from './routes/loans';
 import { termRoutes } from './routes/terms';
 import { userRoutes } from './routes/users';
@@ -52,6 +53,7 @@ export function createApp(s: Services, opts: AppOptions) {
   signedIn.use(dashboardRoutes(s));
   signedIn.use(borrowerRoutes(s));
   signedIn.use(loanRoutes(s));
+  signedIn.use(itemRoutes(s));
   signedIn.use(termRoutes(s));
 
   const admin = Router();
