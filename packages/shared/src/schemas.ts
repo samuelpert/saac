@@ -127,6 +127,8 @@ export const borrowerInputSchema = z.object({
     .optional(),
   phone: optionalText(20).refine((v) => v == null || /^[0-9]{10}$/.test(v), 'A phone number has 10 digits'),
   onScholarship: z.boolean(),
+  /** Staff and graduate assistants only. Ignored for athletes. */
+  staffActive: z.boolean().default(true),
   /** The terms this person is tagged for. Replaces the whole set. */
   termCodes: z.array(termCodeSchema).max(40).default([]),
 });
@@ -136,6 +138,8 @@ export const borrowerListQuerySchema = z.object({
   q: z.string().trim().max(100).optional(),
   /** Only people tagged for this term. */
   term: termCodeSchema.optional(),
+  /** Only staff and graduate assistants who are active (true) or inactive (false). */
+  staffActive: z.enum(['true', 'false']).optional(),
   kind: borrowerKindSchema.optional(),
   teamId: z.uuid().optional(),
   page: z.coerce.number().int().min(1).default(1),
@@ -155,6 +159,8 @@ export interface BorrowerSummary {
   kind: BorrowerKind;
   team: TeamRef | null;
   onScholarship: boolean;
+  /** Staff and graduate assistants only. */
+  staffActive: boolean;
   /** Term tags, newest term first. */
   terms: string[];
   /** Eligibility in `eligibilityTerm`: the term asked for, else the current term. Null when no term exists. */

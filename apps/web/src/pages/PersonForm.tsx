@@ -14,10 +14,11 @@ interface FormState {
   email: string;
   phone: string;
   onScholarship: boolean;
+  staffActive: boolean;
   termCodes: string[];
 }
 
-const blank: FormState = { pid: '', firstName: '', lastName: '', kind: 'ATHLETE', teamId: '', email: '', phone: '', onScholarship: false, termCodes: [] };
+const blank: FormState = { pid: '', firstName: '', lastName: '', kind: 'ATHLETE', teamId: '', email: '', phone: '', onScholarship: false, staffActive: true, termCodes: [] };
 
 /** Admin only: add a late addition by hand, or correct a person. */
 export function PersonForm() {
@@ -45,6 +46,7 @@ export function PersonForm() {
         email: p.email ?? '',
         phone: p.phone ?? '',
         onScholarship: p.onScholarship,
+        staffActive: p.staffActive,
         termCodes: p.terms,
       });
     }
@@ -122,23 +124,31 @@ export function PersonForm() {
             On scholarship (athletes need this to borrow)
           </label>
         )}
-        <fieldset className="stack" style={{ border: 0, padding: 0, margin: 0, gap: 0 }}>
-          <legend className="small medium secondary" style={{ marginBottom: 6 }}>
-            Terms. A person can borrow only in a term they are tagged for.
-          </legend>
-          {terms.data?.length === 0 && <span className="muted">No terms yet. Add one on the Terms screen.</span>}
-          {terms.data?.map((t) => (
-            <label key={t.id} className="check">
-              <input
-                type="checkbox"
-                checked={form.termCodes.includes(t.code)}
-                onChange={(e) => set('termCodes', e.target.checked ? [...form.termCodes, t.code] : form.termCodes.filter((c) => c !== t.code))}
-              />
-              {t.code}
-              {t.isCurrent && <span className="pill ok">Current</span>}
-            </label>
-          ))}
-        </fieldset>
+        {form.kind !== 'ATHLETE' && (
+          <label className="check">
+            <input type="checkbox" checked={form.staffActive} onChange={(e) => set('staffActive', e.target.checked)} />
+            Active staff (can borrow tech, never books)
+          </label>
+        )}
+        {form.kind === 'ATHLETE' && (
+          <fieldset className="stack" style={{ border: 0, padding: 0, margin: 0, gap: 0 }}>
+            <legend className="small medium secondary" style={{ marginBottom: 6 }}>
+              Terms. An athlete can borrow only in a term they are tagged for.
+            </legend>
+            {terms.data?.length === 0 && <span className="muted">No terms yet. Add one on the Terms screen.</span>}
+            {terms.data?.map((t) => (
+              <label key={t.id} className="check">
+                <input
+                  type="checkbox"
+                  checked={form.termCodes.includes(t.code)}
+                  onChange={(e) => set('termCodes', e.target.checked ? [...form.termCodes, t.code] : form.termCodes.filter((c) => c !== t.code))}
+                />
+                {t.code}
+                {t.isCurrent && <span className="pill ok">Current</span>}
+              </label>
+            ))}
+          </fieldset>
+        )}
         <ErrorText error={save.error instanceof ApiError ? save.error : null} />
         <div className="row">
           <button type="submit" className="btn primary" disabled={save.isPending}>

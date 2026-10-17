@@ -40,6 +40,9 @@ export function Person() {
       {p.eligibility === 'TERM_ENDED' && (
         <Feedback fb={{ tone: 'warn', word: `${p.eligibilityTerm} ended`, text: 'The return deadline has passed, so nobody can borrow until the next term list is imported. Returning items still works.' }} />
       )}
+      {p.eligibility === 'STAFF_INACTIVE' && (
+        <Feedback fb={{ tone: 'warn', word: 'Inactive staff', text: 'An admin switched this staff member off, so they cannot borrow. They can still return what they hold.' }} />
+      )}
       {p.eligibility === 'NO_SCHOLARSHIP' && (
         <Feedback fb={{ tone: 'warn', word: 'Not on scholarship', text: `Athletes need a scholarship to borrow. They can still return what they hold.` }} />
       )}
@@ -109,10 +112,19 @@ export function Person() {
             <dd>{p.team?.name ?? <span className="muted">No team</span>}</dd>
             <dt>Scholarship</dt>
             <dd>{p.kind === 'ATHLETE' ? (p.onScholarship ? 'Yes' : 'No') : <span className="muted">Not applicable</span>}</dd>
-            <dt>Terms</dt>
-            <dd>
-              <TermTags terms={p.terms} />
-            </dd>
+            {p.kind === 'ATHLETE' ? (
+              <>
+                <dt>Terms</dt>
+                <dd>
+                  <TermTags terms={p.terms} />
+                </dd>
+              </>
+            ) : (
+              <>
+                <dt>Staff status</dt>
+                <dd>{p.staffActive ? 'Active · can borrow tech, not books' : 'Inactive · cannot borrow'}</dd>
+              </>
+            )}
             <dt>On file since</dt>
             <dd className="num">{fmtDate(p.createdAt)}</dd>
           </dl>

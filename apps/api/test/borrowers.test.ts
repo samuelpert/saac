@@ -17,8 +17,8 @@ describe.skipIf(!hasDb)('people, term tags and eligibility', () => {
     const ended = await t.db.semester.create({ data: { code: 'SPRING26', startsOn: day(-250), endsOn: day(-150), returnDeadline: day(-145) } });
     const fall = await t.db.semester.create({ data: { code: 'FALL26', startsOn: day(-60), endsOn: day(40), returnDeadline: day(45), isCurrent: true } });
     const spring = await t.db.semester.create({ data: { code: 'SPRING27', startsOn: day(120), endsOn: day(220), returnDeadline: day(225) } });
-    const mk = async (key: string, pid: string, kind: 'ATHLETE' | 'STAFF', onScholarship: boolean, terms: string[]) => {
-      const b = await t.db.borrower.create({ data: { pid, firstName: 'Fake', lastName: key, kind, onScholarship } });
+    const mk = async (key: string, pid: string, kind: 'ATHLETE' | 'STAFF', onScholarship: boolean, terms: string[], staffActive = true) => {
+      const b = await t.db.borrower.create({ data: { pid, firstName: 'Fake', lastName: key, kind, onScholarship, staffActive } });
       ids[key] = b.id;
       for (const id of terms) await t.db.borrowerTerm.create({ data: { borrowerId: b.id, semesterId: id } });
     };
@@ -27,6 +27,7 @@ describe.skipIf(!hasDb)('people, term tags and eligibility', () => {
     await mk('Outsider', '9300003', 'ATHLETE', true, []);
     await mk('Staffer', '9300004', 'STAFF', false, [fall.id]);
     await mk('Veteran', '9300005', 'ATHLETE', true, [ended.id, fall.id, spring.id]);
+    await mk('Retired', '9300006', 'STAFF', false, [], false);
     admin = await signIn(t.app, 'boss');
     desk = await signIn(t.app, 'desk');
   });
@@ -44,7 +45,8 @@ describe.skipIf(!hasDb)('people, term tags and eligibility', () => {
     expect(byName(rows, 'Funded').eligibility).toBe('ELIGIBLE');
     expect(byName(rows, 'Unfunded').eligibility).toBe('NO_SCHOLARSHIP');
     expect(byName(rows, 'Outsider').eligibility).toBe('NOT_IN_TERM');
-    expect(byName(rows, 'Staffer').eligibility).toBe('ELIGIBLE');
+    expect(byName(rows, 'Staffer').eligibility).toBe('TECH_ONLY');
+    expect(byName(rows, 'Retired').eligibility).toBe('STAFF_INACTIVE');
     expect(byName(rows, 'Funded').eligibilityTerm).toBe('FALL26');
   });
 
@@ -68,6 +70,26 @@ describe.skipIf(!hasDb)('people, term tags and eligibility', () => {
     // The next term, once their tag exists, switches them back on.
     const next = (await desk.get('/api/borrowers?term=SPRING27')).body.rows as Row[];
     expect(next[0]).toMatchObject({ eligibility: 'ELIGIBLE', eligibilityTerm: 'SPRING27' });
+  });
+
+  it('staff are tech only while active, whatever term or deadline, and an admin switches them', async () => {
+    // No term tag and an ended term make no difference to staff.
+    const old = (await desk.get('/api/borrowers/search?q=9300004&term=SPRING26')).body.matches[0];
+    expect(old).toMatchObject({ eligibility: 'TECH_ONLY', staffActive: true });
+
+    const active = (await desk.get('/api/borrowers?staffActive=true')).body.rows as Row[];
+    const inactive = (await desk.get('/api/borrowers?staffActive=false')).body.rows as Row[];
+    expect(active.map((r) => r.lastName)).toEqual(['Staffer']);
+    expect(inactive.map((r) => r.lastName)).toEqual(['Retired']);
+
+    const body = { pid: '9300004', firstName: 'Fake', lastName: 'Staffer', kind: 'STAFF', teamId: null, email: '', phone: '', onScholarship: false, staffActive: false, termCodes: ['FALL26'] };
+    expect((await desk.put(`/api/borrowers/${ids.Staffer}`).send(body)).status).toBe(403);
+    const off = await admin.put(`/api/borrowers/${ids.Staffer}`).send(body);
+    expect(off.body).toMatchObject({ staffActive: false, eligibility: 'STAFF_INACTIVE' });
+    const entry = await t.db.auditLog.findFirstOrThrow({ where: { action: 'borrower.update', entityId: ids.Staffer } });
+    expect(entry.before).toMatchObject({ staffActive: true });
+    expect(entry.after).toMatchObject({ staffActive: false });
+    await admin.put(`/api/borrowers/${ids.Staffer}`).send({ ...body, staffActive: true });
   });
 
   it('search carries eligibility too, for any term asked', async () => {

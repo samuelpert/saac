@@ -42,9 +42,10 @@ export const toSummary = (b: BorrowerWithTeam, ref: RefTerm | null, today = nyDa
   kind: b.kind,
   team: b.team ? { id: b.team.id, name: b.team.name } : null,
   onScholarship: b.onScholarship,
+  staffActive: b.staffActive,
   terms: [...b.terms].sort((a, z) => z.semester.startsOn.getTime() - a.semester.startsOn.getTime()).map((t) => t.semester.code),
   eligibility: ref
-    ? computeEligibility({ kind: b.kind, onScholarship: b.onScholarship, inTerm: b.terms.some((t) => t.semesterId === ref.id), termEnded: isTermEnded(ref.returnDeadline, today) })
+    ? computeEligibility({ kind: b.kind, onScholarship: b.onScholarship, staffActive: b.staffActive, inTerm: b.terms.some((t) => t.semesterId === ref.id), termEnded: isTermEnded(ref.returnDeadline, today) })
     : null,
   eligibilityTerm: ref?.code ?? null,
 });
@@ -59,6 +60,7 @@ export const borrowerSnapshot = (b: Borrower, termCodes?: string[]) => ({
   email: b.email,
   phone: b.phone,
   onScholarship: b.onScholarship,
+  staffActive: b.staffActive,
   ...(termCodes ? { terms: [...termCodes].sort() } : {}),
 });
 
@@ -120,6 +122,7 @@ export class BorrowersService {
       AND: [
         query.term ? { terms: { some: { semesterId: ref!.id } } } : {},
         query.kind ? { kind: query.kind } : {},
+        query.staffActive ? { kind: { not: 'ATHLETE' }, staffActive: query.staffActive === 'true' } : {},
         query.teamId ? { teamId: query.teamId } : {},
         query.holdingTermId ? holdingWhere(query.holdingTermId) : {},
         query.q ? (/^\d+$/.test(query.q) ? { pid: { startsWith: query.q } } : nameWhere(query.q)) : {},

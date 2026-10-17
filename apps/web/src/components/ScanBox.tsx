@@ -7,6 +7,27 @@ import { useIsAdmin } from '../auth/AuthContext';
 import { beep } from '../lib/beep';
 import { EligibilityPill, Feedback, type FeedbackMessage } from './ui';
 
+/** Feedback for a PID that matched one person, worded by what they can borrow. */
+function foundMessage(p: BorrowerSummary): Pick<FeedbackMessage, 'tone' | 'word' | 'text'> {
+  const who = `PID ${p.pid} · ${p.firstName} ${p.lastName}`;
+  switch (p.eligibility) {
+    case 'ELIGIBLE':
+      return { tone: 'ok', word: 'Found', text: `${who} · can borrow books and tech in ${p.eligibilityTerm}` };
+    case 'TECH_ONLY':
+      return { tone: 'ok', word: 'Found', text: `${who} · staff, can borrow tech only` };
+    case 'STAFF_INACTIVE':
+      return { tone: 'warn', word: 'Inactive staff', text: `${who} · cannot borrow until an admin switches them back on` };
+    case 'NO_SCHOLARSHIP':
+      return { tone: 'warn', word: 'Not on scholarship', text: who };
+    case 'TERM_ENDED':
+      return { tone: 'warn', word: `${p.eligibilityTerm} ended`, text: `${who} · cannot borrow until the next term list is imported` };
+    case 'NOT_IN_TERM':
+      return { tone: 'warn', word: `Not in ${p.eligibilityTerm}`, text: who };
+    default:
+      return { tone: 'info', word: 'Found', text: who };
+  }
+}
+
 /**
  * The scan or search field. A barcode scanner types like a keyboard and presses Enter,
  * so Enter submits, feedback shows at once, and focus stays in the field.
@@ -37,12 +58,7 @@ export function ScanBox({ term }: { term?: string }) {
     switch (r.kind) {
       case 'pid':
         next = one
-          ? {
-              tone: one.eligibility === 'ELIGIBLE' ? 'ok' : 'warn',
-              word: one.eligibility === 'ELIGIBLE' ? 'Found' : one.eligibility === 'NO_SCHOLARSHIP' ? 'Not on scholarship' : one.eligibility === 'TERM_ENDED' ? `${one.eligibilityTerm} ended` : `Not in ${one.eligibilityTerm ?? 'this term'}`,
-              text: `PID ${one.pid} · ${one.firstName} ${one.lastName}${one.eligibility === 'ELIGIBLE' ? ` · can borrow in ${one.eligibilityTerm}` : one.eligibility === 'TERM_ENDED' ? ' · cannot borrow until the next term list is imported' : ''}`,
-              action: { label: 'Open person page', href: `/people/${one.id}` },
-            }
+          ? { ...foundMessage(one), action: { label: 'Open person page', href: `/people/${one.id}` } }
           : { tone: 'err', word: 'Not found', text: `No person has PID ${q}.`, action: isAdmin ? { label: 'Add person', href: `/people/new?pid=${q}` } : undefined };
         break;
       case 'pid-short':

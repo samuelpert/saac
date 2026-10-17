@@ -147,7 +147,8 @@ async function main() {
   await db.courseBook.createMany({ data: courseBook });
 
   const enrollments: { borrowerId: string; courseId: string }[] = [];
-  for (const p of active) {
+  // Book needs come from classes, and only athletes borrow books. Staff borrow tech only.
+  for (const p of active.filter((x) => x.kind === 'ATHLETE')) {
     const n = 2 + Math.floor(rand() * 2);
     const chosen = new Set<string>();
     while (chosen.size < n) chosen.add(pick(courses).id);

@@ -64,8 +64,15 @@ export function WidgetBody<T>({ widget, children }: { widget: Widget<T> | undefi
   return <>{children(widget.data)}</>;
 }
 
-const ELIGIBILITY_TONE: Record<Eligibility, Tone> = { ELIGIBLE: 'ok', NO_SCHOLARSHIP: 'warn', TERM_ENDED: 'warn', NOT_IN_TERM: 'info' };
-const ELIGIBILITY_MARK: Record<Eligibility, string> = { ELIGIBLE: '✓', NO_SCHOLARSHIP: '!', TERM_ENDED: '!', NOT_IN_TERM: '–' };
+const ELIGIBILITY_TONE: Record<Eligibility, Tone> = {
+  ELIGIBLE: 'ok',
+  TECH_ONLY: 'ok',
+  NO_SCHOLARSHIP: 'warn',
+  TERM_ENDED: 'warn',
+  NOT_IN_TERM: 'info',
+  STAFF_INACTIVE: 'info',
+};
+const ELIGIBILITY_MARK: Record<Eligibility, string> = { ELIGIBLE: '✓', TECH_ONLY: '✓', NO_SCHOLARSHIP: '!', TERM_ENDED: '!', NOT_IN_TERM: '–', STAFF_INACTIVE: '–' };
 
 /** Whether a person can borrow in a term. Always an icon and words, never color alone. */
 export function EligibilityPill({ status, term }: { status: Eligibility | null; term?: string | null }) {

@@ -15,6 +15,7 @@ export function People() {
   const [text, setText] = useState(params.get('q') ?? '');
   const q = params.get('q') ?? '';
   const term = params.get('term') ?? '';
+  const staffActive = params.get('staffActive') ?? '';
   const kind = params.get('kind') ?? '';
   const teamId = params.get('teamId') ?? '';
   const holding = params.get('holding') ?? '';
@@ -42,11 +43,12 @@ export function People() {
   const teams = useQuery({ queryKey: ['teams'], queryFn: () => apiGet<TeamRef[]>('/api/teams') });
   const terms = useQuery({ queryKey: ['terms'], queryFn: () => apiGet<TermRow[]>('/api/terms') });
   const list = useQuery({
-    queryKey: ['borrowers', q, term, kind, teamId, holding, page],
+    queryKey: ['borrowers', q, term, kind, teamId, holding, staffActive, page],
     queryFn: () => {
       const p = new URLSearchParams({ page: String(page), pageSize: '50' });
       if (q) p.set('q', q);
       if (term) p.set('term', term);
+      if (staffActive) p.set('staffActive', staffActive);
       if (kind) p.set('kind', kind);
       if (teamId) p.set('teamId', teamId);
       if (holding) p.set('holding', holding);
@@ -102,6 +104,11 @@ export function People() {
               </option>
             ))}
           </select>
+          <select className="select" aria-label="Staff status" value={staffActive} onChange={(e) => set({ staffActive: e.target.value })}>
+            <option value="">Any staff status</option>
+            <option value="true">Active staff</option>
+            <option value="false">Inactive staff</option>
+          </select>
           <select className="select" aria-label="Team" value={teamId} onChange={(e) => set({ teamId: e.target.value })}>
             <option value="">Any team</option>
             {teams.data?.map((t) => (
@@ -129,7 +136,7 @@ export function People() {
                   <th>Role</th>
                   <th>Team</th>
                   <th>Terms</th>
-                  <th>{data?.rows[0]?.eligibilityTerm ? `Can borrow in ${data.rows[0].eligibilityTerm}` : 'Can borrow'}</th>
+                  <th>Can borrow</th>
                 </tr>
               </thead>
               <tbody>
