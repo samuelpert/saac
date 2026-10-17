@@ -319,9 +319,9 @@ a.chip:hover { background: var(--color-selected); color: var(--color-text); text
 .health-grid > span:nth-child(even) { text-align: right; font-weight: 500; overflow-wrap: anywhere; }
 
 .results { display: flex; flex-direction: column; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-control); overflow: hidden; }
-.results a { display: flex; align-items: center; gap: var(--space-3); min-height: 48px; padding: 0 var(--space-4); color: var(--color-text); border-bottom: 1px solid var(--color-border); }
-.results a:last-child { border-bottom: 0; }
-.results a:hover, .results a:focus-visible { background: var(--color-selected); text-decoration: none; color: var(--color-text); }
+.results .result-row { display: flex; align-items: center; gap: var(--space-3); min-height: 48px; padding: 0 var(--space-4); border-bottom: 1px solid var(--color-border); }
+.results .result-row:last-child { border-bottom: 0; }
+.results .result-row:hover { background: var(--color-selected); }
 
 /* ---- Tables ---------------------------------------------------------------------- */
 
@@ -375,3 +375,32 @@ table.table { width: 100%; border-collapse: collapse; font-size: 15px; }
   .sidebar, .no-print { display: none !important; }
   body, .main, .card, .tile { background: none !important; box-shadow: none !important; color: black !important; }
 }
+
+/* ---- Person card -------------------------------------------------------------------------- */
+
+.person-name { color: var(--color-link); font-weight: 400; text-align: left; }
+.person-name:hover { color: var(--color-primary-hover); }
+.person-card {
+  position: fixed; z-index: 20; display: flex; flex-direction: column; gap: var(--space-3);
+  padding: 20px; background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: var(--radius-card); corner-shape: squircle; box-shadow: var(--shadow-sheet);
+}
+.person-card-head { display: flex; align-items: center; gap: 14px; }
+.person-card .photo {
+  width: 72px; height: 72px; flex: 0 0 72px; border-radius: var(--radius-control); corner-shape: squircle;
+  background: var(--color-surface-subtle); color: var(--color-text-muted);
+  display: flex; align-items: center; justify-content: center;
+}
+.person-card-fields { margin: 0; display: flex; flex-direction: column; }
+.copy-field {
+  display: grid; grid-template-columns: 84px minmax(0, 1fr) auto; align-items: center; gap: var(--space-2);
+  min-height: 40px; border-top: 1px solid var(--color-border);
+}
+.copy-field dt { font-size: 13px; font-weight: 500; color: var(--color-text-secondary); }
+.copy-field dd { margin: 0; font-weight: 500; overflow-wrap: anywhere; }
+.copy-button {
+  display: inline-flex; align-items: center; gap: 4px; height: 32px; padding: 0 var(--space-2);
+  border: 1px solid var(--color-border); border-radius: var(--radius-small); background: var(--color-surface);
+  font-size: 12px; font-weight: 500; color: var(--color-text); cursor: pointer; transition: border-color var(--motion);
+}
+.copy-button:hover { border-color: var(--color-border-strong); }

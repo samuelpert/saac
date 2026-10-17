@@ -9,15 +9,19 @@ import { shortName } from '../services/dashboard.service';
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024, files: 1 } });
 
-const previewBody = z.object({ term: importTermSchema });
+const flag = z.enum(['true', 'false']).default('false').transform((v) => v === 'true');
+const previewBody = z.object({ term: importTermSchema, allOnScholarship: flag });
 const applyBody = z.object({
   term: importTermSchema,
-  removeMissingTags: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
+  removeMissingTags: flag,
+  allOnScholarship: flag,
   expectedSha256: z.string().regex(/^[0-9a-f]{64}$/).optional(),
 });
 const reviewListBody = z.object({
-  review: z.array(z.object({ row: z.number().int(), pid: z.string().nullable(), reason: z.string(), scope: z.enum(['row', 'field']) })).max(20_000),
-  warnings: z.array(z.object({ row: z.number().int().nullable(), pid: z.string().nullable(), message: z.string() })).max(20_000),
+  review: z
+    .array(z.object({ sheet: z.string().nullable().default(null), row: z.number().int(), pid: z.string().nullable(), reason: z.string(), scope: z.enum(['row', 'field']) }))
+    .max(20_000),
+  warnings: z.array(z.object({ sheet: z.string().nullable().default(null), row: z.number().int().nullable(), pid: z.string().nullable(), message: z.string() })).max(20_000),
 });
 
 function requireFile(file: Express.Multer.File | undefined): Express.Multer.File {
@@ -31,14 +35,14 @@ export function importRoutes(s: Services) {
 
   r.post('/imports/students/preview', upload.single('file'), async (req, res) => {
     const file = requireFile(req.file);
-    const { term } = previewBody.parse(req.body);
-    res.json(await s.studentImport.preview(file.originalname, file.buffer, term));
+    const { term, allOnScholarship } = previewBody.parse(req.body);
+    res.json(await s.studentImport.preview(file.originalname, file.buffer, term, allOnScholarship));
   });
 
   r.post('/imports/students/apply', upload.single('file'), async (req, res) => {
     const file = requireFile(req.file);
-    const { term, removeMissingTags, expectedSha256 } = applyBody.parse(req.body);
-    res.json(await s.studentImport.apply(req.user!.id, file.originalname, file.buffer, term, { removeMissingTags, expectedSha256 }));
+    const { term, removeMissingTags, allOnScholarship, expectedSha256 } = applyBody.parse(req.body);
+    res.json(await s.studentImport.apply(req.user!.id, file.originalname, file.buffer, term, { removeMissingTags, allOnScholarship, expectedSha256 }));
   });
 
   // The review list as a spreadsheet. PIDs are written as text so Excel keeps their leading zeros.
@@ -47,21 +51,23 @@ export function importRoutes(s: Services) {
     const wb = new ExcelJS.Workbook();
     const sheet = wb.addWorksheet('Review');
     sheet.columns = [
+      { header: 'Sheet', key: 'sheet', width: 18 },
       { header: 'Row', key: 'row', width: 8 },
       { header: 'PID', key: 'pid', width: 12, style: { numFmt: '@' } },
       { header: 'Imported?', key: 'scope', width: 22 },
       { header: 'Reason', key: 'reason', width: 70 },
     ];
     for (const rv of review) {
-      sheet.addRow({ row: rv.row, pid: rv.pid ?? '', scope: rv.scope === 'row' ? 'No, row skipped' : 'Yes, without this value', reason: rv.reason });
+      sheet.addRow({ sheet: rv.sheet ?? '', row: rv.row, pid: rv.pid ?? '', scope: rv.scope === 'row' ? 'No, row skipped' : 'Yes, without this value', reason: rv.reason });
     }
     const warn = wb.addWorksheet('Warnings');
     warn.columns = [
+      { header: 'Sheet', key: 'sheet', width: 18 },
       { header: 'Row', key: 'row', width: 8 },
       { header: 'PID', key: 'pid', width: 12, style: { numFmt: '@' } },
       { header: 'Warning', key: 'message', width: 100 },
     ];
-    for (const w of warnings) warn.addRow({ row: w.row ?? '', pid: w.pid ?? '', message: w.message });
+    for (const w of warnings) warn.addRow({ sheet: w.sheet ?? '', row: w.row ?? '', pid: w.pid ?? '', message: w.message });
     for (const ws of [sheet, warn]) ws.getRow(1).font = { bold: true };
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', 'attachment; filename="import-review-list.xlsx"');

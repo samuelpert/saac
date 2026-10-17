@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { BORROWER_KIND_LABEL, type BorrowerDetail } from '@saac/shared';
 import { apiGet } from '../api/client';
 import { useIsAdmin } from '../auth/AuthContext';
+import { CopyButton } from '../components/PersonCard';
 import { EligibilityPill, EmptyState, ErrorText, Feedback, Glyph, Loading, PageHead, TermTags } from '../components/ui';
 import { fmtDate } from '../lib/format';
 
@@ -22,6 +23,7 @@ export function Person() {
         sub={
           <span className="row" style={{ gap: 'var(--space-2)' }}>
             <span className="num">PID {p.pid}</span>
+            <CopyButton value={p.pid} label="Copy Panther ID" />
             <span>· {BORROWER_KIND_LABEL[p.kind]}</span>
             {p.team && <span>· {p.team.name}</span>}
             <EligibilityPill status={p.eligibility} term={p.eligibilityTerm} />

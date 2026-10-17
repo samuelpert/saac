@@ -17,6 +17,28 @@ function defaultTerm(terms: TermRow[]): string {
   return open[0]?.code ?? current?.code ?? '';
 }
 
+/** "Football · row 7" for a workbook with sheets, "Row 7" otherwise. */
+const where = (sheet: string | null, row: number) => (sheet ? `${sheet} · row ${row}` : `Row ${row}`);
+
+/** What the importer did with the file's sheets and columns, so nothing is dropped silently. */
+function FileNotes({ p }: { p: StudentImportPreview }) {
+  const lines: string[] = [];
+  if (p.sheetsRead.length > 1) lines.push(`Read ${p.sheetsRead.length} sheets: ${p.sheetsRead.join(', ')}.`);
+  if (p.sheetsSkipped.length > 0) lines.push(`Skipped ${p.sheetsSkipped.join(', ')}: no Panther ID, last name and first name headers.`);
+  if (p.ignoredColumns.length > 0) lines.push(`Not imported: ${p.ignoredColumns.join(', ')}.`);
+  if (!p.hasScholarshipColumn) {
+    lines.push(p.allOnScholarship ? 'No scholarship column: everyone in the file is marked on scholarship.' : 'No scholarship column, and the scholarship-list box is off: nobody\'s scholarship changes.');
+  }
+  if (lines.length === 0) return null;
+  return (
+    <ul className="small secondary" style={{ margin: 0, paddingLeft: 20 }}>
+      {lines.map((l) => (
+        <li key={l}>{l}</li>
+      ))}
+    </ul>
+  );
+}
+
 function form(file: File, fields: Record<string, string>) {
   const fd = new FormData();
   for (const [k, v] of Object.entries(fields)) fd.set(k, v);
@@ -31,11 +53,13 @@ export function ImportStudents() {
   // The term this file is for. Empty means "add people only, no term tag".
   const [pickedTerm, setPickedTerm] = useState<string | null>(null);
   const [removeMissing, setRemoveMissing] = useState(false);
+  // A scholarship list has no scholarship column: everyone in it is on scholarship.
+  const [allOnScholarship, setAllOnScholarship] = useState(true);
   const [tab, setTab] = useState<Tab>('review');
   const term = pickedTerm ?? defaultTerm(terms.data ?? []);
 
   const preview = useMutation({
-    mutationFn: () => apiSend<StudentImportPreview>('POST', '/api/imports/students/preview', form(file!, { term })),
+    mutationFn: () => apiSend<StudentImportPreview>('POST', '/api/imports/students/preview', form(file!, { term, allOnScholarship: String(allOnScholarship) })),
     onSuccess: (p) => setTab(p.counts.review > 0 ? 'review' : p.counts.created > 0 ? 'create' : 'update'),
   });
   const apply = useMutation({
@@ -43,7 +67,7 @@ export function ImportStudents() {
       apiSend<StudentImportResult>(
         'POST',
         '/api/imports/students/apply',
-        form(file!, { term, removeMissingTags: String(removeMissing), expectedSha256: preview.data!.fileSha256 }),
+        form(file!, { term, allOnScholarship: String(allOnScholarship), removeMissingTags: String(removeMissing), expectedSha256: preview.data!.fileSha256 }),
       ),
     onSuccess: () => void qc.invalidateQueries(),
   });
@@ -95,7 +119,7 @@ export function ImportStudents() {
       <PageHead title="Import students" sub="Preview first. Nothing is saved until you apply." actions={<Link className="btn" to="/admin/imports">Import history</Link>} />
 
       <section className="card" style={{ maxWidth: 720 }}>
-        <Field label="Student file" hint=".xlsx or .csv with PID, Last Name, First Name, OnScholarship?, Sport, E-mail Address, Mobile Phone">
+        <Field label="Student file" hint=".xlsx or .csv. Needs Panther ID (or PID), Last Name and First Name. Sport, scholarship, email and phone are used when present. Every sheet is read.">
           <input
             className="input"
             type="file"
@@ -130,6 +154,20 @@ export function ImportStudents() {
             No term exists yet. <Link to="/admin/terms">Add one on the Terms screen</Link> first, or choose "No term" to add people without a tag.
           </p>
         )}
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={allOnScholarship}
+            onChange={(e) => {
+              setAllOnScholarship(e.target.checked);
+              reset();
+            }}
+          />
+          <span>
+            <span className="medium">Everyone in this file is on scholarship.</span>{' '}
+            <span className="secondary">For a scholarship list with no scholarship column. A file with its own column always uses it.</span>
+          </span>
+        </label>
         <div className="row">
           <button type="button" className="btn primary" disabled={!file || preview.isPending} onClick={() => preview.mutate()}>
             {preview.isPending ? 'Reading the file…' : 'Preview'}
@@ -146,6 +184,7 @@ export function ImportStudents() {
               {plural(p.counts.rows, 'row')} read · {p.termCode ? `tagging ${p.termCode}` : 'no term tag'}
             </span>
           </div>
+          <FileNotes p={p} />
           {p.alreadyAppliedAt && (
             <Feedback fb={{ tone: 'info', word: 'Seen before', text: `This exact file was applied on ${fmtDateTime(p.alreadyAppliedAt)}. Applying it again changes nothing that has not changed since.` }} />
           )}
@@ -183,7 +222,7 @@ export function ImportStudents() {
                 <table className="table">
                   <thead>
                     <tr>
-                      <th className="n">Row</th>
+                      <th>Where</th>
                       <th>PID</th>
                       <th>Imported?</th>
                       <th>Reason</th>
@@ -192,7 +231,7 @@ export function ImportStudents() {
                   <tbody>
                     {p.review.map((r, i) => (
                       <tr key={`${r.row}-${i}`}>
-                        <td className="n">{r.row}</td>
+                        <td className="num" style={{ whiteSpace: 'nowrap' }}>{where(r.sheet, r.row)}</td>
                         <td className="pid">{r.pid ?? '—'}</td>
                         <td>{r.scope === 'row' ? <span className="pill err">No, row skipped</span> : <span className="pill warn">Yes, without this value</span>}</td>
                         <td>{r.reason}</td>
@@ -212,7 +251,7 @@ export function ImportStudents() {
               <ul className="stack" style={{ margin: 0, paddingLeft: 20, gap: 'var(--space-1)' }}>
                 {p.warnings.map((w, i) => (
                   <li key={i} className="num">
-                    {w.row ? `Row ${w.row}: ` : ''}
+                    {w.row ? `${where(w.sheet, w.row)}: ` : ''}
                     {w.message}
                   </li>
                 ))}
@@ -283,7 +322,7 @@ function ChangeTable({ rows, showChanges }: { rows: StudentImportPreview['rows']
       <table className="table">
         <thead>
           <tr>
-            <th className="n">Row</th>
+            <th>Where</th>
             <th>PID</th>
             <th>Name</th>
             {showChanges && <th>Changes</th>}
@@ -292,7 +331,7 @@ function ChangeTable({ rows, showChanges }: { rows: StudentImportPreview['rows']
         <tbody>
           {shown.map((r) => (
             <tr key={r.pid}>
-              <td className="n">{r.row}</td>
+              <td className="num" style={{ whiteSpace: 'nowrap' }}>{where(r.sheet, r.row)}</td>
               <td className="pid">{r.pid}</td>
               <td>{r.name}</td>
               {showChanges && (

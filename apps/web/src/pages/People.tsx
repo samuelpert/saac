@@ -5,6 +5,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { BORROWER_KIND_LABEL, type BorrowerListResponse, type TeamRef, type TermRow } from '@saac/shared';
 import { apiGet } from '../api/client';
 import { useIsAdmin } from '../auth/AuthContext';
+import { PersonName } from '../components/PersonCard';
 import { EligibilityPill, EmptyState, ErrorText, PageHead, TermTags } from '../components/ui';
 import { fmtNumber, plural } from '../lib/format';
 
@@ -144,9 +145,7 @@ export function People() {
                   <tr key={b.id}>
                     <td className="pid">{b.pid}</td>
                     <td>
-                      <Link to={`/people/${b.id}`}>
-                        {b.lastName}, {b.firstName}
-                      </Link>
+                      <PersonName person={{ ...b, team: b.team?.name ?? null }} />
                     </td>
                     <td>{BORROWER_KIND_LABEL[b.kind]}</td>
                     <td>{b.team?.name ?? <span className="muted">—</span>}</td>

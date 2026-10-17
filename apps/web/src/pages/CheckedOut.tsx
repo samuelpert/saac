@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import type { HoldListRow, LoanListRow, TeamRef, TermRow } from '@saac/shared';
 import { apiGet } from '../api/client';
+import { PersonName } from '../components/PersonCard';
 import { EmptyState, ErrorText, Glyph, PageHead } from '../components/ui';
 import { fmtDate, plural } from '../lib/format';
 
@@ -127,7 +128,7 @@ function LoanTable({ rows, showKind }: { rows: LoanListRow[]; showKind: boolean 
           {rows.map((r) => (
             <tr key={`${r.kind}-${r.id}`}>
               <td>
-                <Link to={`/people/${r.borrower.id}`}>{r.borrower.name}</Link>
+                <PersonName person={r.borrower} />
               </td>
               <td className="pid">{r.borrower.pid}</td>
               <td>{r.borrower.team ?? <span className="muted">—</span>}</td>
@@ -170,7 +171,7 @@ function HoldsTable({ rows }: { rows: HoldListRow[] }) {
           {rows.map((r) => (
             <tr key={r.borrower.id}>
               <td>
-                <Link to={`/people/${r.borrower.id}`}>{r.borrower.name}</Link>
+                <PersonName person={r.borrower} />
               </td>
               <td className="pid">{r.borrower.pid}</td>
               <td>{r.borrower.team ?? <span className="muted">—</span>}</td>

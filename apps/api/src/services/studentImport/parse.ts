@@ -5,58 +5,70 @@ import { badRequest } from '../../http/errors';
 export type ImportField = 'pid' | 'lastName' | 'firstName' | 'onScholarship' | 'sport' | 'email' | 'phone';
 
 /**
- * Header names accepted for each field, compared lowercased with surrounding spaces trimmed.
- * If the supervisor's scholarship list uses other headers, add them here and nowhere else.
+ * Header names accepted for each field. Headers are compared after `headerKey`, which drops case,
+ * spaces and punctuation, so "Panther ID #", "PANTHER ID" and "PantherID" are the same header.
+ * If a new list uses other headers, add them here and nowhere else.
  */
 export const HEADER_ALIASES: Record<ImportField, string[]> = {
-  pid: ['pid', 'panther id', 'pantherid', 'panther id number'],
-  lastName: ['last name', 'lastname', 'last'],
-  firstName: ['first name', 'firstname', 'first'],
-  onScholarship: ['onscholarship?', 'onscholarship', 'on scholarship', 'on scholarship?', 'scholarship'],
-  sport: ['sport', 'team'],
-  email: ['e-mail address', 'email address', 'email', 'e-mail'],
-  phone: ['mobile phone', 'mobile', 'cell phone', 'cell', 'phone'],
+  pid: ['PID', 'PID #', 'PID Number', 'Panther ID', 'Panther ID #', 'Panther ID Number', 'Panther ID No'],
+  lastName: ['Last Name', 'Last', 'Surname'],
+  firstName: ['First Name', 'First', 'Given Name'],
+  onScholarship: ['OnScholarship?', 'On Scholarship', 'Scholarship'],
+  sport: ['Sport', 'Team'],
+  email: ['E-mail Address', 'Email Address', 'Email', 'FIU Email'],
+  phone: ['Mobile Phone', 'Mobile', 'Cell Phone', 'Cell', 'Phone'],
 };
 
 const REQUIRED: ImportField[] = ['pid', 'lastName', 'firstName'];
 
-const FIELD_LABEL: Record<ImportField, string> = {
-  pid: 'PID',
-  lastName: 'Last Name',
-  firstName: 'First Name',
-  onScholarship: 'OnScholarship?',
-  sport: 'Sport',
-  email: 'E-mail Address',
-  phone: 'Mobile Phone',
-};
+/** Rows searched for the header row, so a title line above the headers is fine. */
+const HEADER_SEARCH_ROWS = 10;
 
-const headerKey = (h: string) => h.trim().replace(/\s+/g, ' ').toLowerCase();
+export const headerKey = (h: string) => h.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+const ALIAS_LOOKUP = new Map<string, ImportField>(
+  (Object.entries(HEADER_ALIASES) as [ImportField, string[]][]).flatMap(([field, aliases]) => aliases.map((a) => [headerKey(a), field] as const)),
+);
 
 /** A value read from one cell: text, a real boolean, or nothing. Numbers become their digits. */
 export type CellValue = string | boolean | null;
 
 export interface RawRow {
-  /** Spreadsheet row number, header is row 1. */
+  /** Sheet the row came from. Null for a CSV file. */
+  sheet: string | null;
+  /** Row number as the spreadsheet shows it. */
   row: number;
   values: Partial<Record<ImportField, CellValue>>;
+  /**
+   * For a sheet with no Sport column: the labels that may name the team, best first
+   * (a title above the header row, then the sheet tab name).
+   */
+  sportCandidates?: string[];
 }
 
 export interface ParsedFile {
   rows: RawRow[];
-  /** Headers in the file that matched no field. Ignored on purpose (Photo, Address, ...). */
+  /** Headers in the file that matched no field. Ignored on purpose (Photo, Comments, ...). */
   ignoredHeaders: string[];
+  /** Fields that have a column somewhere in the file. */
+  columns: ImportField[];
+  sheetsRead: string[];
+  /** Sheets with no header row naming a Panther ID, last name and first name, such as a list of emails. */
+  sheetsSkipped: string[];
 }
 
-function mapHeaders(headers: string[]): { columns: Map<number, ImportField>; ignored: string[] } {
-  const lookup = new Map<string, ImportField>();
-  for (const [field, aliases] of Object.entries(HEADER_ALIASES) as [ImportField, string[]][]) {
-    for (const a of aliases) lookup.set(a, field);
-  }
+interface HeaderMatch {
+  columns: Map<number, ImportField>;
+  ignored: string[];
+}
+
+/** Map one row of header cells to fields. Null when the row is not a header row. */
+function matchHeaders(cells: string[]): HeaderMatch | null {
   const columns = new Map<number, ImportField>();
   const seen = new Set<ImportField>();
   const ignored: string[] = [];
-  headers.forEach((h, i) => {
-    const field = lookup.get(headerKey(h));
+  cells.forEach((h, i) => {
+    const field = ALIAS_LOOKUP.get(headerKey(h));
     if (field && !seen.has(field)) {
       columns.set(i, field);
       seen.add(field);
@@ -64,12 +76,11 @@ function mapHeaders(headers: string[]): { columns: Map<number, ImportField>; ign
       ignored.push(h.trim());
     }
   });
-  const missing = REQUIRED.filter((f) => !seen.has(f));
-  if (missing.length > 0) {
-    throw badRequest(`The file has no ${missing.map((f) => `"${FIELD_LABEL[f]}"`).join(', ')} column. Check the header row.`);
-  }
-  return { columns, ignored };
+  return REQUIRED.every((f) => seen.has(f)) ? { columns, ignored } : null;
 }
+
+const missingColumnsError = () =>
+  badRequest('No sheet has a header row with Panther ID (or PID), Last Name and First Name. Check the header row.');
 
 /** Read an exceljs cell as text without trusting Excel's number formatting. */
 function excelCellValue(value: ExcelJS.CellValue): CellValue {
@@ -90,6 +101,9 @@ function excelCellValue(value: ExcelJS.CellValue): CellValue {
   return null;
 }
 
+const asText = (v: CellValue) => (typeof v === 'string' ? v : v === null ? '' : String(v));
+const isBlank = (v: CellValue | undefined) => v === null || v === undefined || (typeof v === 'string' && v.trim() === '');
+
 async function parseXlsx(buffer: Buffer): Promise<ParsedFile> {
   const wb = new ExcelJS.Workbook();
   try {
@@ -98,30 +112,64 @@ async function parseXlsx(buffer: Buffer): Promise<ParsedFile> {
   } catch {
     throw badRequest('The file could not be read as an Excel workbook. Save it as .xlsx or .csv and try again.');
   }
-  const sheet = wb.worksheets[0];
-  if (!sheet) throw badRequest('The workbook has no sheets');
+  if (wb.worksheets.length === 0) throw badRequest('The workbook has no sheets');
 
-  const headerRow = sheet.getRow(1);
-  const headers: string[] = [];
-  for (let c = 1; c <= sheet.columnCount; c++) {
-    const v = excelCellValue(headerRow.getCell(c).value);
-    headers.push(typeof v === 'string' ? v : v === null ? '' : String(v));
-  }
-  const { columns, ignored } = mapHeaders(headers);
+  const out: ParsedFile = { rows: [], ignoredHeaders: [], columns: [], sheetsRead: [], sheetsSkipped: [] };
+  const columns = new Set<ImportField>();
+  const ignored = new Set<string>();
 
-  const rows: RawRow[] = [];
-  for (let r = 2; r <= sheet.rowCount; r++) {
-    const row = sheet.getRow(r);
-    const values: RawRow['values'] = {};
-    let any = false;
-    for (const [i, field] of columns) {
-      const v = excelCellValue(row.getCell(i + 1).value);
-      if (v !== null && !(typeof v === 'string' && v.trim() === '')) any = true;
-      values[field] = v;
+  // Every sheet is read, so a list split into one sheet per team works the same as one long sheet.
+  for (const sheet of wb.worksheets) {
+    const width = sheet.columnCount;
+    const cellsOf = (r: number) => Array.from({ length: width }, (_, c) => excelCellValue(sheet.getRow(r).getCell(c + 1).value));
+
+    let headerRow = 0;
+    let match: HeaderMatch | null = null;
+    for (let r = 1; r <= Math.min(HEADER_SEARCH_ROWS, sheet.rowCount); r++) {
+      match = matchHeaders(cellsOf(r).map(asText));
+      if (match) {
+        headerRow = r;
+        break;
+      }
     }
-    if (any) rows.push({ row: r, values });
+    if (!match) {
+      out.sheetsSkipped.push(sheet.name);
+      continue;
+    }
+    out.sheetsRead.push(sheet.name);
+    for (const f of match.columns.values()) columns.add(f);
+    for (const h of match.ignored) ignored.add(h);
+
+    // With no Sport column, the team comes from the sheet: a title above the headers, then the tab name.
+    let sportCandidates: string[] | undefined;
+    if (![...match.columns.values()].includes('sport')) {
+      const titles: string[] = [];
+      for (let r = 1; r < headerRow; r++) {
+        for (const v of cellsOf(r)) {
+          const t = asText(v).trim();
+          if (t) titles.push(t);
+        }
+      }
+      sportCandidates = [...titles, sheet.name];
+    }
+
+    for (let r = headerRow + 1; r <= sheet.rowCount; r++) {
+      const cells = cellsOf(r);
+      const values: RawRow['values'] = {};
+      let any = false;
+      for (const [i, field] of match.columns) {
+        const v = cells[i] ?? null;
+        if (!isBlank(v)) any = true;
+        values[field] = v;
+      }
+      if (any) out.rows.push({ sheet: sheet.name, row: r, values, ...(sportCandidates ? { sportCandidates } : {}) });
+    }
   }
-  return { rows, ignoredHeaders: ignored };
+
+  if (out.sheetsRead.length === 0) throw missingColumnsError();
+  out.columns = [...columns];
+  out.ignoredHeaders = [...ignored];
+  return out;
 }
 
 function parseCsvFile(buffer: Buffer): ParsedFile {
@@ -131,21 +179,31 @@ function parseCsvFile(buffer: Buffer): ParsedFile {
   } catch {
     throw badRequest('The CSV file could not be read. Check that it is comma separated.');
   }
-  const [header, ...data] = records;
-  if (!header) throw badRequest('The file is empty');
-  const { columns, ignored } = mapHeaders(header);
+  if (records.length === 0) throw badRequest('The file is empty');
+
+  let headerIndex = -1;
+  let match: HeaderMatch | null = null;
+  for (let i = 0; i < Math.min(HEADER_SEARCH_ROWS, records.length); i++) {
+    match = matchHeaders(records[i]!);
+    if (match) {
+      headerIndex = i;
+      break;
+    }
+  }
+  if (!match) throw missingColumnsError();
+
   const rows: RawRow[] = [];
-  data.forEach((rec, idx) => {
+  records.slice(headerIndex + 1).forEach((rec, idx) => {
     const values: RawRow['values'] = {};
     let any = false;
-    for (const [i, field] of columns) {
+    for (const [i, field] of match.columns) {
       const v = rec[i] ?? '';
       if (v.trim() !== '') any = true;
       values[field] = v;
     }
-    if (any) rows.push({ row: idx + 2, values });
+    if (any) rows.push({ sheet: null, row: headerIndex + idx + 2, values });
   });
-  return { rows, ignoredHeaders: ignored };
+  return { rows, ignoredHeaders: match.ignored, columns: [...match.columns.values()], sheetsRead: [], sheetsSkipped: [] };
 }
 
 export async function parseStudentFile(fileName: string, buffer: Buffer): Promise<ParsedFile> {

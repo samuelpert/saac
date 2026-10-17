@@ -3,6 +3,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { hasDb, makeUser, resetDb, setupApp, signIn, type TestApp } from './helpers';
 
 const sample = await readFile(new URL('../../../fixtures/students.sample.xlsx', import.meta.url));
+const scholarshipList = await readFile(new URL('../../../fixtures/scholarship-list.sample.xlsx', import.meta.url));
 
 describe.skipIf(!hasDb)('student import', () => {
   let t: TestApp;
@@ -137,10 +138,51 @@ describe.skipIf(!hasDb)('student import', () => {
     expect((await apply(sample, 'students.sample.xlsx', '', true)).status).toBe(400);
   });
 
+  it('imports a per-team scholarship workbook: every sheet, teams from sheet names, all on scholarship', async () => {
+    const send = (allOnScholarship: boolean, action: 'preview' | 'apply') =>
+      admin
+        .post(`/api/imports/students/${action}`)
+        .field('term', 'FALL26')
+        .field('allOnScholarship', String(allOnScholarship))
+        .attach('file', scholarshipList, 'scholarship-list.sample.xlsx');
+
+    const p = (await send(true, 'preview')).body;
+    expect(p).toMatchObject({ sheetsSkipped: ['Master'], hasScholarshipColumn: false, allOnScholarship: true });
+    expect(p.counts).toMatchObject({ rows: 12, created: 11, rejected: 1, review: 2, tagged: 11 });
+    expect(p.review[0]).toMatchObject({ sheet: 'Football', row: 5 });
+
+    expect((await send(true, 'apply')).status).toBe(200);
+    const people = await t.db.borrower.findMany({ include: { team: true } });
+    expect(people).toHaveLength(11);
+    expect(people.every((b) => b.onScholarship)).toBe(true);
+    const teamOf = (last: string) => people.find((b) => b.lastName === last)?.team?.name;
+    expect(teamOf('Kickman')).toBe('Mens Soccer');
+    expect(teamOf('Sandy')).toBe('Sand Volleyball');
+    expect(teamOf('Laps')).toBe('Swimming');
+    expect(teamOf('Sprint')).toBe('Womens Track and Field');
+    expect(teamOf('Gamer')).toBeUndefined();
+    expect(await tagged('FALL26')).toBe(11);
+  });
+
+  it('without the scholarship-list option, a file with no scholarship column changes nobody\'s scholarship', async () => {
+    const res = await admin
+      .post('/api/imports/students/apply')
+      .field('term', 'FALL26')
+      .field('allOnScholarship', 'false')
+      .attach('file', scholarshipList, 'scholarship-list.sample.xlsx');
+    expect(res.status).toBe(200);
+    expect(await t.db.borrower.count({ where: { onScholarship: true } })).toBe(0);
+  });
+
+  it('a file with its own scholarship column always uses the column', async () => {
+    const p = (await admin.post('/api/imports/students/preview').field('term', 'FALL26').field('allOnScholarship', 'true').attach('file', sample, 'students.sample.xlsx')).body;
+    expect(p).toMatchObject({ hasScholarshipColumn: true, allOnScholarship: false });
+  });
+
   it('refuses a file without the required columns', async () => {
     const res = await preview(Buffer.from('Name,Sport\nA,Football\n'), 'bad.csv');
     expect(res.status).toBe(400);
-    expect(res.body.message).toContain('"PID"');
+    expect(res.body.message).toContain('Panther ID');
   });
 
   it('exports the review list with PIDs as text', async () => {

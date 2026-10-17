@@ -225,6 +225,8 @@ export interface SearchResponse {
 export const importTermSchema = z.union([z.literal(''), termCodeSchema]).default('');
 
 export interface ImportReviewRow {
+  /** Sheet name for a workbook with several sheets. Null for a CSV or a single-sheet file. */
+  sheet: string | null;
   row: number;
   pid: string | null;
   reason: string;
@@ -233,6 +235,7 @@ export interface ImportReviewRow {
 }
 
 export interface ImportWarning {
+  sheet: string | null;
   row: number | null;
   pid: string | null;
   message: string;
@@ -245,6 +248,7 @@ export interface FieldChange {
 }
 
 export interface ImportPreviewRow {
+  sheet: string | null;
   row: number;
   pid: string;
   name: string;
@@ -281,6 +285,15 @@ export interface StudentImportPreview {
   notInFile: { pid: string; name: string }[];
   /** Set when this exact file was already applied. */
   alreadyAppliedAt: string | null;
+  /** Sheets read, and sheets skipped because they have no Panther ID header row. */
+  sheetsRead: string[];
+  sheetsSkipped: string[];
+  /** Column headers present in the file but not imported (Comments, Photo, ...). */
+  ignoredColumns: string[];
+  /** False when the file has no scholarship column, so `allOnScholarship` decides. */
+  hasScholarshipColumn: boolean;
+  /** Everyone in the file was treated as on scholarship (a scholarship list without that column). */
+  allOnScholarship: boolean;
 }
 
 export interface StudentImportResult {

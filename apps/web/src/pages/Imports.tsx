@@ -106,7 +106,7 @@ export function ImportDetail() {
               <table className="table">
                 <thead>
                   <tr>
-                    <th className="n">Row</th>
+                    <th>Where</th>
                     <th>PID</th>
                     <th>Imported?</th>
                     <th>Reason</th>
@@ -115,7 +115,7 @@ export function ImportDetail() {
                 <tbody>
                   {r.review.map((rv, i) => (
                     <tr key={`${rv.row}-${i}`}>
-                      <td className="n">{rv.row}</td>
+                      <td className="num">{rv.sheet ? `${rv.sheet} · row ${rv.row}` : `Row ${rv.row}`}</td>
                       <td className="pid">{rv.pid ?? '—'}</td>
                       <td>{rv.scope === 'row' ? <span className="pill err">No, row skipped</span> : <span className="pill warn">Yes, without this value</span>}</td>
                       <td>{rv.reason}</td>

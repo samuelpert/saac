@@ -14,6 +14,7 @@ export interface SportMapping {
  * which never overwrites an existing value. `null` is only used where the rules say to store null.
  */
 export interface NormalizedPerson {
+  sheet: string | null;
   row: number;
   pid: string;
   firstName: string;
@@ -71,9 +72,21 @@ export function normalizePhone(raw: CellValue | undefined): { phone?: string; in
   return { phone: digits };
 }
 
-export const sportKey = (v: string) => v.trim().replace(/\s+/g, ' ').toLowerCase();
+/** Case, spaces and punctuation do not matter: "Men's Soccer" and "Mens Soccer" are the same value. */
+export const sportKey = (v: string) => v.toLowerCase().replace(/[^a-z0-9]/g, '');
 
-export function normalizeRows(rows: RawRow[], mappings: Map<string, SportMapping>): NormalizeResult {
+export interface NormalizeOptions {
+  /**
+   * The file is a scholarship list with no scholarship column: everyone in it is on scholarship.
+   * A file that has the column always uses the column.
+   */
+  allOnScholarship?: boolean;
+}
+
+/** "Football row 7", or "Row 7" for a CSV. */
+export const rowLabel = (sheet: string | null, row: number) => (sheet ? `${sheet} row ${row}` : `Row ${row}`);
+
+export function normalizeRows(rows: RawRow[], mappings: Map<string, SportMapping>, opts: NormalizeOptions = {}): NormalizeResult {
   const review: ImportReviewRow[] = [];
   const warnings: ImportWarning[] = [];
   let pidsFixed = 0;
@@ -83,18 +96,18 @@ export function normalizeRows(rows: RawRow[], mappings: Map<string, SportMapping
   for (const r of rows) {
     const check = checkPid(r.values.pid);
     if (!check.ok) {
-      review.push({ row: r.row, pid: null, reason: check.reason, scope: 'row' });
+      review.push({ sheet: r.sheet, row: r.row, pid: null, reason: check.reason, scope: 'row' });
       continue;
     }
     const firstName = normalizeName(r.values.firstName);
     const lastName = normalizeName(r.values.lastName);
     if (firstName === '' || lastName === '') {
-      review.push({ row: r.row, pid: check.pid, reason: 'First or last name is blank', scope: 'row' });
+      review.push({ sheet: r.sheet, row: r.row, pid: check.pid, reason: 'First or last name is blank', scope: 'row' });
       continue;
     }
     if (check.fixed) {
       pidsFixed++;
-      warnings.push({ row: r.row, pid: check.pid, message: 'PID had 6 digits, a leading zero was added' });
+      warnings.push({ sheet: r.sheet, row: r.row, pid: check.pid, message: 'PID had 6 digits, a leading zero was added' });
     }
     candidates.push({ raw: r, pid: check.pid, firstName, lastName });
   }
@@ -112,7 +125,7 @@ export function normalizeRows(rows: RawRow[], mappings: Map<string, SportMapping
   }
   const placeholders = new Set([...phoneUse].filter(([, n]) => n > PLACEHOLDER_PHONE_THRESHOLD).map(([p]) => p));
   for (const p of placeholders) {
-    warnings.push({ row: null, pid: null, message: `Phone ${p} is on ${phoneUse.get(p)} people. Treated as a placeholder and not stored.` });
+    warnings.push({ sheet: null, row: null, pid: null, message: `Phone ${p} is on ${phoneUse.get(p)} people. Treated as a placeholder and not stored.` });
   }
 
   const people: NormalizedPerson[] = [];
@@ -120,19 +133,31 @@ export function normalizeRows(rows: RawRow[], mappings: Map<string, SportMapping
     const { raw } = c;
     const count = byPid.get(c.pid) ?? 0;
     if (count > 1) {
-      review.push({ row: raw.row, pid: c.pid, reason: `PID appears ${count} times in the file`, scope: 'row' });
+      review.push({ sheet: raw.sheet, row: raw.row, pid: c.pid, reason: `PID appears ${count} times in the file`, scope: 'row' });
       continue;
     }
-    const person: NormalizedPerson = { row: raw.row, pid: c.pid, firstName: c.firstName, lastName: c.lastName };
-    const fieldIssue = (reason: string) => review.push({ row: raw.row, pid: c.pid, reason, scope: 'field' });
+    const person: NormalizedPerson = { sheet: raw.sheet, row: raw.row, pid: c.pid, firstName: c.firstName, lastName: c.lastName };
+    const fieldIssue = (reason: string) => review.push({ sheet: raw.sheet, row: raw.row, pid: c.pid, reason, scope: 'field' });
 
     if ('onScholarship' in raw.values) {
       const s = parseScholarship(raw.values.onScholarship);
       if (s === undefined) fieldIssue('Scholarship is blank or not yes/no');
       else person.onScholarship = s;
+    } else if (opts.allOnScholarship) {
+      person.onScholarship = true;
     }
 
-    if ('sport' in raw.values) {
+    if (raw.sportCandidates) {
+      // No Sport column: the sheet names the team, through its title or its tab name.
+      const found = raw.sportCandidates.map((label) => mappings.get(sportKey(label))).find(Boolean);
+      if (!found) {
+        fieldIssue(`Sheet "${raw.sheet}" does not name a known team. Add it to the Sport mapping or pick the team by hand.`);
+      } else {
+        person.kind = found.kind;
+        if (found.kind === 'ATHLETE' && found.teamId === null) fieldIssue(`Sheet "${raw.sheet}" does not name a team. Pick the team by hand.`);
+        else person.teamId = found.teamId;
+      }
+    } else if ('sport' in raw.values) {
       const sport = text(raw.values.sport);
       if (sport === '') {
         fieldIssue('Sport is blank');
@@ -172,12 +197,13 @@ export function normalizeRows(rows: RawRow[], mappings: Map<string, SportMapping
     byName.set(nameKey, [...(byName.get(nameKey) ?? []), p]);
   }
   for (const [email, list] of byEmail) {
-    if (list.length > 1) warnings.push({ row: null, pid: null, message: `Email ${email} is used by ${list.length} people (PIDs ${list.map((p) => p.pid).join(', ')})` });
+    if (list.length > 1) warnings.push({ sheet: null, row: null, pid: null, message: `Email ${email} is used by ${list.length} people (PIDs ${list.map((p) => p.pid).join(', ')})` });
   }
   for (const list of byName.values()) {
     if (list.length > 1) {
       const first = list[0]!;
       warnings.push({
+        sheet: null,
         row: null,
         pid: null,
         message: `Possible duplicate: ${first.lastName}, ${first.firstName} is on ${list.length} PIDs (${list.map((p) => p.pid).join(', ')}). Not merged.`,
@@ -185,6 +211,9 @@ export function normalizeRows(rows: RawRow[], mappings: Map<string, SportMapping
     }
   }
 
-  review.sort((a, b) => a.row - b.row);
+  // File order: sheets as they come, then rows.
+  const sheetOrder = new Map<string | null, number>();
+  for (const r of rows) if (!sheetOrder.has(r.sheet)) sheetOrder.set(r.sheet, sheetOrder.size);
+  review.sort((a, b) => (sheetOrder.get(a.sheet) ?? 0) - (sheetOrder.get(b.sheet) ?? 0) || a.row - b.row);
   return { people, review, warnings, pidsFixed, pidsInFile };
 }

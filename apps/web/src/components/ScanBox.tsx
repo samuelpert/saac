@@ -5,6 +5,7 @@ import type { BorrowerSummary, SearchResponse } from '@saac/shared';
 import { apiGet } from '../api/client';
 import { useIsAdmin } from '../auth/AuthContext';
 import { beep } from '../lib/beep';
+import { PersonName } from './PersonCard';
 import { EligibilityPill, Feedback, type FeedbackMessage } from './ui';
 
 /** Feedback for a PID that matched one person, worded by what they can borrow. */
@@ -128,15 +129,16 @@ export function ScanBox({ term }: { term?: string }) {
           {matches.length > 0 && (
             <div className="results" aria-label="Matching people">
               {matches.map((m) => (
-                <Link key={m.id} to={`/people/${m.id}`}>
+                <div key={m.id} className="result-row">
                   <span className="num secondary">{m.pid}</span>
-                  <span className="medium">
-                    {m.lastName}, {m.firstName}
-                  </span>
+                  <PersonName person={{ ...m, team: m.team?.name ?? null }} />
                   <span className="muted small">{m.team?.name ?? ''}</span>
                   <span className="spacer" />
                   <EligibilityPill status={m.eligibility} term={m.eligibilityTerm} />
-                </Link>
+                  <Link className="small medium" to={`/people/${m.id}`}>
+                    Open ›
+                  </Link>
+                </div>
               ))}
             </div>
           )}

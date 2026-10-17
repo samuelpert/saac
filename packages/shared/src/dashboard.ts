@@ -130,10 +130,20 @@ export interface DashboardResponse {
 
 // ---- Drill-down lists behind the dashboard numbers ---------------------------
 
+/** A person as the lists show them. `name` is "Last, First". */
+export interface PersonRef {
+  id: string;
+  pid: string;
+  firstName: string;
+  lastName: string;
+  name: string;
+  team: string | null;
+}
+
 export interface LoanListRow {
   id: string;
   kind: 'book' | 'tech';
-  borrower: { id: string; pid: string; name: string; team: string | null };
+  borrower: PersonRef;
   label: string;
   tag: string;
   typeName: string;
@@ -143,7 +153,7 @@ export interface LoanListRow {
 }
 
 export interface HoldListRow {
-  borrower: { id: string; pid: string; name: string; team: string | null };
+  borrower: PersonRef;
   stage: 'HOLD_PENDING_REVIEW' | 'ON_HOLD';
   note: string | null;
   updatedAt: string;

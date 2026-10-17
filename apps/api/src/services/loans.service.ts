@@ -56,6 +56,8 @@ const borrowerSelect = { id: true, pid: true, firstName: true, lastName: true, t
 const borrowerRef = (b: { id: string; pid: string; firstName: string; lastName: string; team: { name: string } | null }) => ({
   id: b.id,
   pid: b.pid,
+  firstName: b.firstName,
+  lastName: b.lastName,
   name: `${b.lastName}, ${b.firstName}`,
   team: b.team?.name ?? null,
 });

@@ -12,7 +12,7 @@ Priority: P1 is needed at go-live, P2 soon after, P3 later.
 | --- | --- | --- |
 | A1 | Person record: PID, name, email, phone, team, role, scholarship yes/no, the term tags they carry, and for staff an active switch. Shows what they can borrow now: athletes books and tech, staff tech only | P1 |
 | A2 | Import the student list for a term (`.xlsx` or `.csv`): everyone in the file gets that term's tag. Dry run, review list, and no deletes. Admin only. Spec in `student-import.md` | P1 |
-| A3 | Search as you type by PID or name. The person page shows classes, books and tech held now with counts by type, what they held in past terms, scholarship, team, and contact | P1 |
+| A3 | Search as you type by PID or name. Clicking a person's name in any list opens a small card: photo placeholder (no photos for now), first name, last name and Panther ID, each with a copy button, and a link to the person page. The person page shows classes, books and tech held now with counts by type, what they held in past terms, scholarship, team, and contact | P1 |
 | A4 | Add or edit a person by hand for the rare late addition. Admin only, staff do not add people | P1 |
 | A5 | Teams with coach name and email, used by reports and escalation | P2 |
 

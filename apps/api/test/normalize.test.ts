@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
-import { normalizeEmail, normalizeName, normalizePhone, normalizeRows, parseScholarship, type SportMapping } from '../src/services/studentImport/normalize';
+import { normalizeEmail, normalizeName, normalizePhone, normalizeRows, parseScholarship, sportKey, type SportMapping } from '../src/services/studentImport/normalize';
 import { parseStudentFile } from '../src/services/studentImport/parse';
 
 describe('column rules', () => {
@@ -30,19 +30,83 @@ describe('column rules', () => {
   });
 });
 
+const TEAMS = ['baseball', 'cheerleader', 'dazzler', 'football', 'golf', 'mens basketball', 'mens soccer', 'mens track and field', 'sand volleyball', 'softball', 'swimming', 'tennis', 'volleyball', 'womens basketball', 'womens soccer', 'womens track and field'];
+/** The mapping the migrations install, keyed the way the importer keys it. */
+function defaultMappings(): Map<string, SportMapping> {
+  const m = new Map<string, SportMapping>(TEAMS.map((t) => [sportKey(t), { kind: 'ATHLETE', teamId: `team-${t}` }]));
+  m.set(sportKey('Staff'), { kind: 'STAFF', teamId: null });
+  m.set(sportKey('Staff (tutor)'), { kind: 'STAFF', teamId: null });
+  m.set(sportKey('Graduate Assistant'), { kind: 'GRAD_ASSISTANT', teamId: null });
+  m.set(sportKey('GA'), { kind: 'GRAD_ASSISTANT', teamId: null });
+  m.set(sportKey('5th Year'), { kind: 'ATHLETE', teamId: null });
+  for (const [alias, team] of [
+    ["Men's Track/Field", 'mens track and field'],
+    ["Women's Track/Field", 'womens track and field'],
+    ['Swimming/Diving', 'swimming'],
+    ['Beach Volleyball', 'sand volleyball'],
+    ['M.Soccer', 'mens soccer'],
+  ] as const) {
+    m.set(sportKey(alias), { kind: 'ATHLETE', teamId: `team-${team}` });
+  }
+  return m;
+}
+
+describe('header and team matching', () => {
+  it('ignores case, spaces and punctuation', () => {
+    expect(sportKey("Men's Soccer")).toBe(sportKey('Mens Soccer'));
+    expect(sportKey('  MENS   soccer ')).toBe(sportKey('Mens Soccer'));
+  });
+});
+
+describe('a per-team scholarship workbook (fake copy of the real layout)', async () => {
+  const buffer = await readFile(new URL('../../../fixtures/scholarship-list.sample.xlsx', import.meta.url));
+  const parsed = await parseStudentFile('scholarship-list.sample.xlsx', buffer);
+
+  it('reads every team sheet, finds the header in row 2, and skips the email-only sheet', () => {
+    expect(parsed.sheetsRead).toEqual(['Football', 'M.Soccer', 'Beach Volleyball', 'Swimming', 'W.Track', 'Esports']);
+    expect(parsed.sheetsSkipped).toEqual(['Master']);
+    expect(parsed.rows).toHaveLength(12);
+    expect(parsed.rows[0]).toMatchObject({ sheet: 'Football', row: 3 });
+  });
+
+  it('knows "Panther ID #" is the PID, and leaves the other columns alone', () => {
+    expect(parsed.columns.sort()).toEqual(['email', 'firstName', 'lastName', 'pid']);
+    expect(parsed.ignoredHeaders).toEqual(['Comments', 'Book Stack', 'Missing Laptop/Charger']);
+  });
+
+  it('takes the team from the sheet title, then the tab name', () => {
+    expect(parsed.rows.find((r) => r.sheet === 'M.Soccer')?.sportCandidates).toEqual(["Men's Soccer", 'M.Soccer']);
+  });
+
+  it('marks everyone on scholarship only when asked, and places each team', () => {
+    const plain = normalizeRows(parsed.rows, defaultMappings());
+    expect(plain.people.every((p) => p.onScholarship === undefined)).toBe(true);
+
+    const r = normalizeRows(parsed.rows, defaultMappings(), { allOnScholarship: true });
+    expect(r.people).toHaveLength(11);
+    expect(r.people.every((p) => p.onScholarship === true)).toBe(true);
+    const team = (last: string) => r.people.find((p) => p.lastName === last)?.teamId;
+    expect(team('Fakeman')).toBe('team-football');
+    expect(team('Kickman')).toBe('team-mens soccer');
+    expect(team('Sandy')).toBe('team-sand volleyball');
+    expect(team('Laps')).toBe('team-swimming');
+    expect(team('Sprint')).toBe('team-womens track and field');
+  });
+
+  it('reports problems with the sheet and row, and cleans the small slips', () => {
+    const r = normalizeRows(parsed.rows, defaultMappings(), { allOnScholarship: true });
+    expect(r.review).toEqual([
+      { sheet: 'Football', row: 5, pid: null, reason: 'PID has 3 digits, expected 7', scope: 'row' },
+      { sheet: 'Esports', row: 3, pid: '9800051', reason: expect.stringContaining('does not name a known team'), scope: 'field' },
+    ]);
+    expect(r.people.find((p) => p.lastName === 'Textpid')).toMatchObject({ pid: '9800004', email: 'fake.tq4@fiu.edu' });
+  });
+});
+
 describe('the fake sample file', async () => {
   const buffer = await readFile(new URL('../../../fixtures/students.sample.xlsx', import.meta.url));
   const parsed = await parseStudentFile('students.sample.xlsx', buffer);
-  const mappings = new Map<string, SportMapping>([
-    ...['baseball', 'cheerleader', 'dazzler', 'football', 'golf', 'mens basketball', 'mens soccer', 'mens track and field', 'sand volleyball', 'softball', 'swimming', 'tennis', 'volleyball', 'womens basketball', 'womens soccer', 'womens track and field'].map(
-      (t) => [t, { kind: 'ATHLETE', teamId: `team-${t}` }] as [string, SportMapping],
-    ),
-    ['staff', { kind: 'STAFF', teamId: null }],
-    ['staff (tutor)', { kind: 'STAFF', teamId: null }],
-    ['graduate assistant', { kind: 'GRAD_ASSISTANT', teamId: null }],
-    ['ga', { kind: 'GRAD_ASSISTANT', teamId: null }],
-    ['5th year', { kind: 'ATHLETE', teamId: null }],
-  ]);
+  const mappings = defaultMappings();
   const result = normalizeRows(parsed.rows, mappings);
 
   it('reads every row and ignores the eight unused columns, Photo included', () => {
@@ -85,8 +149,8 @@ describe('the fake sample file', async () => {
   it('sends every copy of a repeated PID to review', () => {
     const r = normalizeRows(
       [
-        { row: 2, values: { pid: '1234567', lastName: 'A', firstName: 'B' } },
-        { row: 3, values: { pid: '1234567', lastName: 'C', firstName: 'D' } },
+        { sheet: null, row: 2, values: { pid: '1234567', lastName: 'A', firstName: 'B' } },
+        { sheet: null, row: 3, values: { pid: '1234567', lastName: 'C', firstName: 'D' } },
       ],
       mappings,
     );

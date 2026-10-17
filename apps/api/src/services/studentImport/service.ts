@@ -40,6 +40,7 @@ interface Plan {
   notInFile: Borrower[];
   pidsFixed: number;
   rowCount: number;
+  file: Pick<StudentImportPreview, 'sheetsRead' | 'sheetsSkipped' | 'ignoredColumns' | 'hasScholarshipColumn' | 'allOnScholarship'>;
 }
 
 function valuesFor(p: NormalizedPerson): Values {
@@ -72,8 +73,9 @@ function changesFor(p: NormalizedPerson, existing: Borrower): Partial<Values> {
 export class StudentImportService {
   constructor(private readonly db: Db) {}
 
-  private async plan(client: Db | Tx, fileName: string, buffer: Buffer, termCode: string): Promise<Plan> {
+  private async plan(client: Db | Tx, fileName: string, buffer: Buffer, termCode: string, allOnScholarship: boolean): Promise<Plan> {
     const parsed = await parseStudentFile(fileName, buffer);
+    const hasScholarshipColumn = parsed.columns.includes('onScholarship');
     if (parsed.rows.length === 0) throw badRequest('The file has a header row but no people');
 
     let term: TermInfo | null = null;
@@ -94,7 +96,7 @@ export class StudentImportService {
     const teamName = new Map(teams.map((t) => [t.id, t.name]));
     const existing = new Map(existingRows.map((b) => [b.pid, b]));
 
-    const norm = normalizeRows(parsed.rows, mappings);
+    const norm = normalizeRows(parsed.rows, mappings, { allOnScholarship });
     const plan: Plan = {
       term,
       creates: [],
@@ -106,6 +108,13 @@ export class StudentImportService {
       notInFile: [],
       pidsFixed: norm.pidsFixed,
       rowCount: parsed.rows.length,
+      file: {
+        sheetsRead: parsed.sheetsRead,
+        sheetsSkipped: parsed.sheetsSkipped,
+        ignoredColumns: parsed.ignoredHeaders,
+        hasScholarshipColumn,
+        allOnScholarship: allOnScholarship && !hasScholarshipColumn,
+      },
     };
 
     const display = (field: string, v: unknown): string | boolean | null => {
@@ -128,7 +137,7 @@ export class StudentImportService {
       const before = existing.get(p.pid);
       if (!before) {
         plan.creates.push({ id: randomUUID(), pid: p.pid, ...valuesFor(p) });
-        plan.rows.push({ row: p.row, pid: p.pid, name, action: 'create', changes: [] });
+        plan.rows.push({ sheet: p.sheet, row: p.row, pid: p.pid, name, action: 'create', changes: [] });
         continue;
       }
       const data = changesFor(p, before);
@@ -141,7 +150,7 @@ export class StudentImportService {
       plan.updates.push({ before, data, tag });
       const changes: FieldChange[] = keys.map((k) => ({ field: fieldLabel[k], from: display(k, before[k]), to: display(k, data[k]) }));
       if (tag) changes.push({ field: 'Term tag', from: null, to: term!.code });
-      plan.rows.push({ row: p.row, pid: p.pid, name, action: 'update', changes });
+      plan.rows.push({ sheet: p.sheet, row: p.row, pid: p.pid, name, action: 'update', changes });
     }
 
     // Possible duplicates against people already on file.
@@ -150,6 +159,7 @@ export class StudentImportService {
       const match = fileNames.get(`${b.lastName.toLowerCase()}|${b.firstName.toLowerCase()}`);
       if (match && match.pid !== b.pid && !norm.pidsInFile.has(b.pid)) {
         plan.warnings.push({
+          sheet: match.sheet,
           row: match.row,
           pid: match.pid,
           message: `Possible duplicate: ${b.lastName}, ${b.firstName} is already on file with PID ${b.pid}. Not merged.`,
@@ -182,9 +192,9 @@ export class StudentImportService {
   }
 
   /** Dry run. Reads only; nothing is saved. */
-  async preview(fileName: string, buffer: Buffer, termCode: string): Promise<StudentImportPreview> {
+  async preview(fileName: string, buffer: Buffer, termCode: string, allOnScholarship = false): Promise<StudentImportPreview> {
     const fileSha256 = createHash('sha256').update(buffer).digest('hex');
-    const plan = await this.plan(this.db, fileName, buffer, termCode);
+    const plan = await this.plan(this.db, fileName, buffer, termCode, allOnScholarship);
     // The same file for another term is a different import, so match the term too.
     const runs = await this.db.importRun.findMany({
       where: { kind: STUDENT_IMPORT_KIND, fileSha256, appliedAt: { not: null } },
@@ -201,6 +211,7 @@ export class StudentImportService {
       warnings: plan.warnings,
       notInFile: plan.notInFile.map((b) => ({ pid: b.pid, name: `${b.lastName}, ${b.firstName}` })),
       alreadyAppliedAt: previous?.appliedAt?.toISOString() ?? null,
+      ...plan.file,
     };
   }
 
@@ -213,7 +224,7 @@ export class StudentImportService {
     fileName: string,
     buffer: Buffer,
     termCode: string,
-    opts: { removeMissingTags: boolean; expectedSha256?: string },
+    opts: { removeMissingTags: boolean; allOnScholarship?: boolean; expectedSha256?: string },
   ): Promise<StudentImportResult> {
     const fileSha256 = createHash('sha256').update(buffer).digest('hex');
     if (opts.expectedSha256 && opts.expectedSha256 !== fileSha256) {
@@ -227,7 +238,7 @@ export class StudentImportService {
       async (tx) => {
         // One student import at a time.
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('saac:student-import'))`;
-        const plan = await this.plan(tx, fileName, buffer, termCode);
+        const plan = await this.plan(tx, fileName, buffer, termCode, opts.allOnScholarship ?? false);
         const entries: AuditEntry[] = [];
 
         const term = plan.term;
@@ -275,8 +286,9 @@ export class StudentImportService {
         const stored: Prisma.InputJsonObject = {
           ...counts,
           termCode: term?.code ?? null,
+          allOnScholarship: plan.file.allOnScholarship,
           // Review rows hold a row number, a PID and a reason only, never names or contact details.
-          reviewRows: plan.review.map((r) => ({ row: r.row, pid: r.pid, reason: r.reason, scope: r.scope })),
+          reviewRows: plan.review.map((r) => ({ sheet: r.sheet, row: r.row, pid: r.pid, reason: r.reason, scope: r.scope })),
         };
         const run = await tx.importRun.create({
           data: { kind: STUDENT_IMPORT_KIND, fileName, fileSha256, userId: actorId, counts: stored, appliedAt: new Date() },
