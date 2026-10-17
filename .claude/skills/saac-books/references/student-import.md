@@ -53,7 +53,7 @@ Rules for the flow:
 - A PID that appears twice in the file goes to review.
 - The same first and last name on different PIDs is a "possible duplicate" warning. Never merge automatically.
 - Term tags: the admin picks the term the file is for (default: the current term), and everyone in the file gets that term's tag. A person keeps every tag they have earned, so a student on the Fall 2026 list and again on the Spring 2027 list carries both. Picking "No term" adds people without a tag, for example the all-time file. Someone tagged for the term but missing from the file is listed as "tagged but not in file", and the admin may tick a box to remove just that term's tag. Never delete anyone.
-- Eligibility: a person can borrow in a term when they carry its tag and, for athletes, are on scholarship (`computeEligibility`). The scholarship value comes from the file and is refreshed by every import.
+- Eligibility: a person can borrow in a term when they carry its tag, the term's return deadline has not passed, and, for athletes, they are on scholarship (`computeEligibility`). After the deadline everyone is off until the next term's list is imported. The scholarship value comes from the file and is refreshed by every import.
 - Export PIDs as text, so Excel does not drop leading zeros again.
 
 ## 5. What the real file contains

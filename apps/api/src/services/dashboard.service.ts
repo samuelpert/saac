@@ -268,6 +268,22 @@ export class DashboardService {
       rows.push({ key: 'no-book-list', text: `No book list imported for ${code} yet`, count: 1, tone: 'warn', href: '/admin/imports' });
     }
 
+    // After the return deadline nobody can borrow until the next term's list is imported.
+    if (isAdmin && term?.isCurrent && nyDate(now) > term.returnDeadline) {
+      const next = await this.db.semester.findFirst({
+        where: { id: { not: term.id }, startsOn: { gt: new Date(`${term.startsOn}T00:00:00Z`) } },
+        orderBy: { startsOn: 'asc' },
+        include: { _count: { select: { members: true } } },
+      });
+      if (!next) {
+        rows.push({ key: 'term-ended', text: `${code} has ended. Add the next term, then import its student list`, count: 1, tone: 'warn', href: '/admin/terms' });
+      } else if (next._count.members === 0) {
+        rows.push({ key: 'term-ended', text: `${code} has ended. Import ${next.code}'s student list so people can borrow again`, count: 1, tone: 'warn', href: '/admin/imports/students' });
+      } else {
+        rows.push({ key: 'term-ended', text: `${code} has ended. Make ${next.code} the current term`, count: 1, tone: 'warn', href: '/admin/terms' });
+      }
+    }
+
     if (isAdmin) {
       const last = await this.db.importRun.findFirst({ where: { kind: STUDENT_IMPORT_KIND, appliedAt: { not: null } }, orderBy: { appliedAt: 'desc' } });
       const review = num((last?.counts as { review?: number } | null)?.review);

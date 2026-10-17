@@ -12,8 +12,11 @@ describe.skipIf(!hasDb)('people, term tags and eligibility', () => {
     await resetDb(t.db);
     await makeUser(t.db, 'boss', 'ADMIN');
     await makeUser(t.db, 'desk', 'STAFF');
-    const fall = await t.db.semester.create({ data: { code: 'FALL26', startsOn: new Date('2026-08-24'), endsOn: new Date('2026-12-11'), returnDeadline: new Date('2026-12-16'), isCurrent: true } });
-    const spring = await t.db.semester.create({ data: { code: 'SPRING27', startsOn: new Date('2027-01-11'), endsOn: new Date('2027-05-01'), returnDeadline: new Date('2027-05-06') } });
+    // Dates are relative to today so these tests never go stale.
+    const day = (n: number) => new Date(Date.now() + n * 86_400_000);
+    const ended = await t.db.semester.create({ data: { code: 'SPRING26', startsOn: day(-250), endsOn: day(-150), returnDeadline: day(-145) } });
+    const fall = await t.db.semester.create({ data: { code: 'FALL26', startsOn: day(-60), endsOn: day(40), returnDeadline: day(45), isCurrent: true } });
+    const spring = await t.db.semester.create({ data: { code: 'SPRING27', startsOn: day(120), endsOn: day(220), returnDeadline: day(225) } });
     const mk = async (key: string, pid: string, kind: 'ATHLETE' | 'STAFF', onScholarship: boolean, terms: string[]) => {
       const b = await t.db.borrower.create({ data: { pid, firstName: 'Fake', lastName: key, kind, onScholarship } });
       ids[key] = b.id;
@@ -23,7 +26,7 @@ describe.skipIf(!hasDb)('people, term tags and eligibility', () => {
     await mk('Unfunded', '9300002', 'ATHLETE', false, [fall.id]);
     await mk('Outsider', '9300003', 'ATHLETE', true, []);
     await mk('Staffer', '9300004', 'STAFF', false, [fall.id]);
-    await mk('Veteran', '9300005', 'ATHLETE', true, [fall.id, spring.id]);
+    await mk('Veteran', '9300005', 'ATHLETE', true, [ended.id, fall.id, spring.id]);
     admin = await signIn(t.app, 'boss');
     desk = await signIn(t.app, 'desk');
   });
@@ -47,7 +50,7 @@ describe.skipIf(!hasDb)('people, term tags and eligibility', () => {
 
   it('shows every tag a person has earned, newest first', async () => {
     const { rows } = (await desk.get('/api/borrowers?pageSize=50')).body;
-    expect(byName(rows, 'Veteran').terms).toEqual(['SPRING27', 'FALL26']);
+    expect(byName(rows, 'Veteran').terms).toEqual(['SPRING27', 'FALL26', 'SPRING26']);
     expect(byName(rows, 'Outsider').terms).toEqual([]);
   });
 
@@ -56,6 +59,15 @@ describe.skipIf(!hasDb)('people, term tags and eligibility', () => {
     expect(spring.rows.map((r: { lastName: string }) => r.lastName)).toEqual(['Veteran']);
     expect(spring.rows[0].eligibilityTerm).toBe('SPRING27');
     expect((await desk.get('/api/borrowers?term=FALL26')).body.total).toBe(4);
+  });
+
+  it('after a term\'s return deadline nobody can borrow in it, scholarship or not', async () => {
+    const rows = (await desk.get('/api/borrowers?term=SPRING26')).body.rows as Row[];
+    expect(rows.map((r) => r.lastName)).toEqual(['Veteran']);
+    expect(rows[0]).toMatchObject({ eligibility: 'TERM_ENDED', eligibilityTerm: 'SPRING26' });
+    // The next term, once their tag exists, switches them back on.
+    const next = (await desk.get('/api/borrowers?term=SPRING27')).body.rows as Row[];
+    expect(next[0]).toMatchObject({ eligibility: 'ELIGIBLE', eligibilityTerm: 'SPRING27' });
   });
 
   it('search carries eligibility too, for any term asked', async () => {

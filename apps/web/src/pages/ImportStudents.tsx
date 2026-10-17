@@ -1,12 +1,21 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import type { StudentImportPreview, StudentImportResult, TermRow } from '@saac/shared';
+import { isTermEnded, type StudentImportPreview, type StudentImportResult, type TermRow } from '@saac/shared';
 import { apiGet, apiSend, download } from '../api/client';
 import { EmptyState, ErrorText, Feedback, Field, Glyph, PageHead } from '../components/ui';
 import { fmtDateTime, fmtNumber, plural } from '../lib/format';
 
 type Tab = 'create' | 'update' | 'review' | 'warnings' | 'missing';
+
+/** The current term, unless its return deadline has passed: then the next term that is still open. */
+function defaultTerm(terms: TermRow[]): string {
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+  const current = terms.find((t) => t.isCurrent);
+  if (current && !isTermEnded(current.returnDeadline, today)) return current.code;
+  const open = terms.filter((t) => !isTermEnded(t.returnDeadline, today)).sort((a, b) => a.startsOn.localeCompare(b.startsOn));
+  return open[0]?.code ?? current?.code ?? '';
+}
 
 function form(file: File, fields: Record<string, string>) {
   const fd = new FormData();
@@ -23,7 +32,7 @@ export function ImportStudents() {
   const [pickedTerm, setPickedTerm] = useState<string | null>(null);
   const [removeMissing, setRemoveMissing] = useState(false);
   const [tab, setTab] = useState<Tab>('review');
-  const term = pickedTerm ?? terms.data?.find((t) => t.isCurrent)?.code ?? '';
+  const term = pickedTerm ?? defaultTerm(terms.data ?? []);
 
   const preview = useMutation({
     mutationFn: () => apiSend<StudentImportPreview>('POST', '/api/imports/students/preview', form(file!, { term })),
@@ -98,7 +107,7 @@ export function ImportStudents() {
             }}
           />
         </Field>
-        <Field label="Which term is this list for?" hint="Everyone in the file gets this term's tag. A person can borrow only in a term they are tagged for, and athletes also need a scholarship.">
+        <Field label="Which term is this list for?" hint="Everyone in the file gets this term's tag. A person can borrow only in a term they are tagged for, until its return deadline, and athletes also need a scholarship. Next term, import the new list.">
           <select
             className="select"
             value={term}

@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   borrowerInputSchema,
   computeEligibility,
+  isTermEnded,
   type BorrowerDetail,
   type BorrowerListResponse,
   type BorrowerSummary,
@@ -12,6 +13,7 @@ import {
   type TeamRef,
 } from '@saac/shared';
 import type { Db, Tx } from '../db';
+import { nyDate } from '../lib/dates';
 import type { Borrower, BorrowerTerm, Prisma, Semester, Team } from '../generated/prisma/client';
 import { badRequest, conflict, notFound } from '../http/errors';
 import { audit } from './audit';
@@ -28,9 +30,11 @@ export const summaryInclude = { team: true, terms: { include: { semester: { sele
 export interface RefTerm {
   id: string;
   code: string;
+  /** YYYY-MM-DD. The term is over from the day after. */
+  returnDeadline: string;
 }
 
-export const toSummary = (b: BorrowerWithTeam, ref: RefTerm | null): BorrowerSummary => ({
+export const toSummary = (b: BorrowerWithTeam, ref: RefTerm | null, today = nyDate(new Date())): BorrowerSummary => ({
   id: b.id,
   pid: b.pid,
   firstName: b.firstName,
@@ -39,7 +43,9 @@ export const toSummary = (b: BorrowerWithTeam, ref: RefTerm | null): BorrowerSum
   team: b.team ? { id: b.team.id, name: b.team.name } : null,
   onScholarship: b.onScholarship,
   terms: [...b.terms].sort((a, z) => z.semester.startsOn.getTime() - a.semester.startsOn.getTime()).map((t) => t.semester.code),
-  eligibility: ref ? computeEligibility({ kind: b.kind, onScholarship: b.onScholarship, inTerm: b.terms.some((t) => t.semesterId === ref.id) }) : null,
+  eligibility: ref
+    ? computeEligibility({ kind: b.kind, onScholarship: b.onScholarship, inTerm: b.terms.some((t) => t.semesterId === ref.id), termEnded: isTermEnded(ref.returnDeadline, today) })
+    : null,
   eligibilityTerm: ref?.code ?? null,
 });
 
@@ -84,7 +90,7 @@ export class BorrowersService {
   /** The term to judge eligibility against: the requested term, else the current one. */
   async refTerm(code?: string): Promise<RefTerm | null> {
     const t = await this.terms.resolve(code);
-    return t ? { id: t.id, code: t.code } : null;
+    return t ? { id: t.id, code: t.code, returnDeadline: t.returnDeadline } : null;
   }
 
   async search(raw: string, termCode?: string): Promise<SearchResponse> {

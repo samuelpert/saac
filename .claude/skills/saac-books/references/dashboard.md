@@ -51,7 +51,7 @@ Panels:
 
 | Panel | Shows | Opens |
 | --- | --- | --- |
-| Needs attention | Only rows with a count above zero: import rows to review, past due with no reminder sent, reminders waiting for preview, the hold list ready after the return deadline, holds waiting for an admin, titles short, assignments not picked up, backup too old (A) | The screen that fixes it |
+| Needs attention | Only rows with a count above zero: the current term has ended and the next term's list is not in yet (A, says the next step: add the term, import its list, or make it current), import rows to review, past due with no reminder sent, reminders waiting for preview, the hold list ready after the return deadline, holds waiting for an admin, titles short, assignments not picked up, backup too old (A) | The screen that fixes it |
 | Return progress by team | Per team: people with items out, loans returned versus total, sorted by most outstanding. A plain horizontal bar is enough | Checked-out items and books filtered to the team |
 | Books this term | Needs by state: needed, assigned, issued, waived. Short count highlighted | Student books, shortage report |
 | Inventory health | Tech by type: available, out, in repair, surplus, retired. Copies: available, assigned, out, retired | Inventory screens |

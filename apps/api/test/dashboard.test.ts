@@ -238,3 +238,44 @@ describe.skipIf(!hasDb)('search', () => {
     expect((await desk.get('/api/borrowers/search?q=99999999')).body).toMatchObject({ kind: 'digits', matches: [] });
   });
 });
+
+describe.skipIf(!hasDb)('after the return deadline', () => {
+  let t: TestApp;
+  let admin: Awaited<ReturnType<typeof signIn>>;
+  let desk: Awaited<ReturnType<typeof signIn>>;
+  const day = (n: number) => new Date(Date.now() + n * 86_400_000);
+
+  beforeAll(async () => {
+    t = setupApp();
+    await resetDb(t.db);
+    await makeUser(t.db, 'boss', 'ADMIN');
+    await makeUser(t.db, 'desk', 'STAFF');
+    await t.db.semester.create({ data: { code: 'FALL26', startsOn: day(-120), endsOn: day(-10), returnDeadline: day(-3), isCurrent: true } });
+    admin = await signIn(t.app, 'boss');
+    desk = await signIn(t.app, 'desk');
+  });
+  afterAll(() => t.db.$disconnect());
+
+  const row = async (who = admin) => {
+    const d = (await who.get('/api/dashboard')).body as DashboardResponse;
+    return data(d.widgets.attention).find((r) => r.key === 'term-ended');
+  };
+
+  it('tells an admin what to do next, step by step', async () => {
+    expect(await row()).toMatchObject({ text: 'FALL26 has ended. Add the next term, then import its student list', href: '/admin/terms' });
+
+    const next = await t.db.semester.create({ data: { code: 'SPRING27', startsOn: day(30), endsOn: day(130), returnDeadline: day(135) } });
+    expect(await row()).toMatchObject({ text: "FALL26 has ended. Import SPRING27's student list so people can borrow again", href: '/admin/imports/students' });
+
+    const p = await t.db.borrower.create({ data: { pid: '9400001', firstName: 'Fake', lastName: 'Tagged', onScholarship: true } });
+    await t.db.borrowerTerm.create({ data: { borrowerId: p.id, semesterId: next.id } });
+    expect(await row()).toMatchObject({ text: 'FALL26 has ended. Make SPRING27 the current term', href: '/admin/terms' });
+  });
+
+  it('goes away once the next term is current, and staff never see it', async () => {
+    expect(await row(desk)).toBeUndefined();
+    const next = await t.db.semester.findUniqueOrThrow({ where: { code: 'SPRING27' } });
+    expect((await admin.post(`/api/terms/${next.id}/current`)).status).toBe(200);
+    expect(await row()).toBeUndefined();
+  });
+});

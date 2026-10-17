@@ -39,8 +39,8 @@ export function ScanBox({ term }: { term?: string }) {
         next = one
           ? {
               tone: one.eligibility === 'ELIGIBLE' ? 'ok' : 'warn',
-              word: one.eligibility === 'ELIGIBLE' ? 'Found' : one.eligibility === 'NO_SCHOLARSHIP' ? 'Not on scholarship' : `Not in ${one.eligibilityTerm ?? 'this term'}`,
-              text: `PID ${one.pid} · ${one.firstName} ${one.lastName}${one.eligibility === 'ELIGIBLE' ? ` · can borrow in ${one.eligibilityTerm}` : ''}`,
+              word: one.eligibility === 'ELIGIBLE' ? 'Found' : one.eligibility === 'NO_SCHOLARSHIP' ? 'Not on scholarship' : one.eligibility === 'TERM_ENDED' ? `${one.eligibilityTerm} ended` : `Not in ${one.eligibilityTerm ?? 'this term'}`,
+              text: `PID ${one.pid} · ${one.firstName} ${one.lastName}${one.eligibility === 'ELIGIBLE' ? ` · can borrow in ${one.eligibilityTerm}` : one.eligibility === 'TERM_ENDED' ? ' · cannot borrow until the next term list is imported' : ''}`,
               action: { label: 'Open person page', href: `/people/${one.id}` },
             }
           : { tone: 'err', word: 'Not found', text: `No person has PID ${q}.`, action: isAdmin ? { label: 'Add person', href: `/people/new?pid=${q}` } : undefined };

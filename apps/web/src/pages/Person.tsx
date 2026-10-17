@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { BORROWER_KIND_LABEL, type BorrowerDetail } from '@saac/shared';
 import { apiGet } from '../api/client';
 import { useIsAdmin } from '../auth/AuthContext';
-import { EligibilityPill, EmptyState, ErrorText, Glyph, Loading, PageHead, TermTags } from '../components/ui';
+import { EligibilityPill, EmptyState, ErrorText, Feedback, Glyph, Loading, PageHead, TermTags } from '../components/ui';
 import { fmtDate } from '../lib/format';
 
 export function Person() {
@@ -36,6 +36,13 @@ export function Person() {
           )
         }
       />
+
+      {p.eligibility === 'TERM_ENDED' && (
+        <Feedback fb={{ tone: 'warn', word: `${p.eligibilityTerm} ended`, text: 'The return deadline has passed, so nobody can borrow until the next term list is imported. Returning items still works.' }} />
+      )}
+      {p.eligibility === 'NO_SCHOLARSHIP' && (
+        <Feedback fb={{ tone: 'warn', word: 'Not on scholarship', text: `Athletes need a scholarship to borrow. They can still return what they hold.` }} />
+      )}
 
       <div className="grid-2">
         <section className="card">
