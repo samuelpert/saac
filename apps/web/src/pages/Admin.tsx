@@ -239,8 +239,8 @@ export function Terms() {
       >
         <h2>Add a term</h2>
         <div className="grid-2" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))' }}>
-          <Field label="Code">
-            <input className="input" placeholder="e.g. FALL26" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })} />
+          <Field label="Code" hint="e.g. FALL26, SPRING27, SUMMER27">
+            <input className="input" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })} />
           </Field>
           <Field label="Starts">
             <input className="input" type="date" value={form.startsOn} onChange={(e) => setForm({ ...form, startsOn: e.target.value })} />

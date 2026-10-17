@@ -214,7 +214,7 @@ The user is designing this. Until it is settled, build only the generic scan fie
 ## 4. Status tracker
 
 - [ ] Phase 0: scaffold and host. Done: monorepo, schema and migrations, login and roles, idle sign-out, audit log, backup script, runbook draft. Open: Windows service and reboot test, HTTPS between computers, backup scheduling on the host, restore guide tested by someone else
-- [x] Phase 1: admin dashboard and people. Waiting for the supervisor's review of the dashboard (design.md section 11)
+- [x] Phase 1: admin dashboard and people. Done October 2026: dashboard reviewed by the user, every phase 1 acceptance check passes. Added on request: term tags and eligibility, staff active switch, per-team scholarship workbook import, person card, item lookup and item history page
 - [ ] Phase 2: inventory
 - [ ] Phase 3: term books and needs
 - [ ] Phase 4: lend and return
