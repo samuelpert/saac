@@ -13,6 +13,8 @@ Specs, rules and open questions live in `.claude/skills/saac-books/` (start with
 
 Needs Node 22.12 or later and PostgreSQL 16 or later.
 
+Create an empty local database first, for example `createdb saac`, then:
+
 ```sh
 npm install
 cp .env.example .env              # then set DATABASE_URL to your local database
@@ -20,6 +22,8 @@ npm run db:migrate                # apply migrations
 npm run db:seed                   # FAKE data only; prints the dev password (or set SEED_PASSWORD)
 npm run dev                       # API on :3000, web on http://localhost:5173
 ```
+
+Run Prisma through npm scripts or `npx prisma ...`; it is not installed globally.
 
 The seed creates two logins, `admin` (admin) and `desk` (front desk). To start over: `npx prisma migrate reset --force`.
 
