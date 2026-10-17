@@ -117,10 +117,10 @@ model Borrower {
   onScholarship Boolean      @default(false)
   teamId        String?
   team          Team?        @relation(fields: [teamId], references: [id])
-  active        Boolean      @default(true)
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 
+  terms       BorrowerTerm[]
   enrollments Enrollment[]
   bookLoans   BookLoan[]
   itemLoans   ItemLoan[]
@@ -139,11 +139,25 @@ model Semester {
   returnDeadline DateTime
   isCurrent      Boolean  @default(false)
 
+  members     BorrowerTerm[]
   courses     Course[]
   bookLoans   BookLoan[]
   itemLoans   ItemLoan[]
   escalations Escalation[]
   needs       BookNeed[]
+}
+
+// The term tag. A person is in a term when this row exists; they keep every tag they have earned.
+// A person can borrow in a term when they carry its tag and, for athletes, are on scholarship.
+model BorrowerTerm {
+  borrowerId String
+  semesterId String
+  borrower   Borrower @relation(fields: [borrowerId], references: [id])
+  semester   Semester @relation(fields: [semesterId], references: [id])
+  createdAt  DateTime @default(now())
+
+  @@id([borrowerId, semesterId])
+  @@index([semesterId])
 }
 
 model Course {

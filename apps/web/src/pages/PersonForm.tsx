@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { BORROWER_KIND_LABEL, borrowerInputSchema, type BorrowerDetail, type BorrowerKind, type BorrowerSummary, type TeamRef } from '@saac/shared';
+import { BORROWER_KIND_LABEL, borrowerInputSchema, type BorrowerDetail, type BorrowerKind, type BorrowerSummary, type TeamRef, type TermRow } from '@saac/shared';
 import { ApiError, apiGet, apiSend } from '../api/client';
 import { ErrorText, Field, Loading, PageHead } from '../components/ui';
 
@@ -14,10 +14,10 @@ interface FormState {
   email: string;
   phone: string;
   onScholarship: boolean;
-  active: boolean;
+  termCodes: string[];
 }
 
-const blank: FormState = { pid: '', firstName: '', lastName: '', kind: 'ATHLETE', teamId: '', email: '', phone: '', onScholarship: false, active: true };
+const blank: FormState = { pid: '', firstName: '', lastName: '', kind: 'ATHLETE', teamId: '', email: '', phone: '', onScholarship: false, termCodes: [] };
 
 /** Admin only: add a late addition by hand, or correct a person. */
 export function PersonForm() {
@@ -30,6 +30,7 @@ export function PersonForm() {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const teams = useQuery({ queryKey: ['teams'], queryFn: () => apiGet<TeamRef[]>('/api/teams') });
+  const terms = useQuery({ queryKey: ['terms'], queryFn: () => apiGet<TermRow[]>('/api/terms') });
   const existing = useQuery({ queryKey: ['borrower', id], queryFn: () => apiGet<BorrowerDetail>(`/api/borrowers/${id}`), enabled: editing });
 
   useEffect(() => {
@@ -44,7 +45,7 @@ export function PersonForm() {
         email: p.email ?? '',
         phone: p.phone ?? '',
         onScholarship: p.onScholarship,
-        active: p.active,
+        termCodes: p.terms,
       });
     }
   }, [existing.data]);
@@ -115,14 +116,29 @@ export function PersonForm() {
             <input className="input num" inputMode="tel" value={form.phone} onChange={(e) => set('phone', e.target.value)} />
           </Field>
         </div>
-        <label className="check">
-          <input type="checkbox" checked={form.onScholarship} onChange={(e) => set('onScholarship', e.target.checked)} />
-          On scholarship
-        </label>
-        <label className="check">
-          <input type="checkbox" checked={form.active} onChange={(e) => set('active', e.target.checked)} />
-          Active this term
-        </label>
+        {form.kind === 'ATHLETE' && (
+          <label className="check">
+            <input type="checkbox" checked={form.onScholarship} onChange={(e) => set('onScholarship', e.target.checked)} />
+            On scholarship (athletes need this to borrow)
+          </label>
+        )}
+        <fieldset className="stack" style={{ border: 0, padding: 0, margin: 0, gap: 0 }}>
+          <legend className="small medium secondary" style={{ marginBottom: 6 }}>
+            Terms. A person can borrow only in a term they are tagged for.
+          </legend>
+          {terms.data?.length === 0 && <span className="muted">No terms yet. Add one on the Terms screen.</span>}
+          {terms.data?.map((t) => (
+            <label key={t.id} className="check">
+              <input
+                type="checkbox"
+                checked={form.termCodes.includes(t.code)}
+                onChange={(e) => set('termCodes', e.target.checked ? [...form.termCodes, t.code] : form.termCodes.filter((c) => c !== t.code))}
+              />
+              {t.code}
+              {t.isCurrent && <span className="pill ok">Current</span>}
+            </label>
+          ))}
+        </fieldset>
         <ErrorText error={save.error instanceof ApiError ? save.error : null} />
         <div className="row">
           <button type="submit" className="btn primary" disabled={save.isPending}>

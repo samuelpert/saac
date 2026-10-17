@@ -11,6 +11,7 @@ The schema is a starting point derived from the features, not a copy of any old 
 | `User` | Admins and desk staff who log in with a username and password. Borrowers never log in |
 | `Team`, `GroupMapping` | Teams with coach contact, and the mapping from the import's Sport column |
 | `Borrower` | Anyone who can borrow: athletes, staff, graduate assistants |
+| `BorrowerTerm` | The term tag: one row per person per term they were in a student import or were tagged by hand |
 | `Semester` | A term with its dates and return deadline |
 | `Course`, `Enrollment` | A class in a term, and who is taking it |
 | `Book`, `CourseBook` | A title (one per ISBN) and which classes need it |
@@ -146,10 +147,10 @@ model Borrower {
   onScholarship Boolean      @default(false)
   teamId        String?
   team          Team?        @relation(fields: [teamId], references: [id])
-  active        Boolean      @default(true)
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 
+  terms       BorrowerTerm[]
   enrollments Enrollment[]
   bookLoans   BookLoan[]
   itemLoans   ItemLoan[]
@@ -168,11 +169,24 @@ model Semester {
   returnDeadline DateTime
   isCurrent      Boolean  @default(false)
 
+  members     BorrowerTerm[]
   courses     Course[]
   bookLoans   BookLoan[]
   itemLoans   ItemLoan[]
   escalations Escalation[]
   needs       BookNeed[]
+}
+
+// The term tag. A person is in a term when this row exists; they keep every tag they have earned.
+model BorrowerTerm {
+  borrowerId String
+  semesterId String
+  borrower   Borrower @relation(fields: [borrowerId], references: [id])
+  semester   Semester @relation(fields: [semesterId], references: [id])
+  createdAt  DateTime @default(now())
+
+  @@id([borrowerId, semesterId])
+  @@index([semesterId])
 }
 
 model Course {
@@ -435,6 +449,7 @@ A second migration, `default_sport_mapping`, inserts the 16 teams and the defaul
 - `Book` is a title, one row per ISBN. `BookCopy` is a physical book with its own `copyTag`. Loans point to a copy, so the system knows exactly which copy is out. The number of copies is a count, never typed by hand.
 - `Item.retiredAt` and `BookCopy.retiredAt` retire something without deleting its history.
 - `Item.status` holds only the hand-set states `IN_REPAIR` and `SURPLUS`. Checked out and available are never stored: an item is available when it is `IN_SERVICE`, not retired, and has no open loan. Moving an item to `IN_REPAIR` or `SURPLUS` needs no open loan, which the service checks inside a transaction that locks the item row, and checkout rejects any item that is not `IN_SERVICE`. Item history merges an item's loans with its audit entries, so repair and surplus changes appear in it.
+- There is no `Borrower.active`. A person is in a term when a `BorrowerTerm` row exists, and can borrow in it when they also pass `computeEligibility` (athletes need `onScholarship`; staff and graduate assistants only need the tag). Migration `term_tags` replaced the old flag and gave everyone who was active the current term's tag.
 - `Borrower.kind` and `Borrower.teamId` replace the old single Sport column. Athletes have a team. Staff and graduate assistants do not.
 - `Escalation` is per person per term, because someone on hold in one term can be fine in the next.
 - The hold list is a query, not a table: people with an open tech loan (`ItemLoan`, never a book loan) on the day after the term's `returnDeadline` plus the grace days setting (default 0). Building or exporting it stores nothing. Only an admin applying a hold sets `Escalation.stage` to `ON_HOLD`, and `HOLD_PENDING_REVIEW` is an optional marker an admin sets while checking the list.

@@ -40,7 +40,7 @@ Tiles, all for the selected term unless noted:
 
 | Tile | Shows | Definition | Opens |
 | --- | --- | --- | --- |
-| People | Active people, split athletes and staff | `active = true`, any term | People list, active filter |
+| People | People tagged for the selected term, split athletes and staff | Has a `BorrowerTerm` row for the term | People list, filtered to the term |
 | Books out | Open book loans | `closedAt IS NULL` | Checked-out books |
 | Tech out | Open tech loans | `closedAt IS NULL` | Checked-out items |
 | Past due | Open loans past their due date | Open and `dueDate` before now, books and tech | Checked-out items or books, past due filter |

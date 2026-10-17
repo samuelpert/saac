@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import type { ImportMode, StudentImportPreview, StudentImportResult } from '@saac/shared';
-import { apiSend, download } from '../api/client';
+import type { StudentImportPreview, StudentImportResult, TermRow } from '@saac/shared';
+import { apiGet, apiSend, download } from '../api/client';
 import { EmptyState, ErrorText, Feedback, Field, Glyph, PageHead } from '../components/ui';
 import { fmtDateTime, fmtNumber, plural } from '../lib/format';
 
@@ -18,12 +18,15 @@ function form(file: File, fields: Record<string, string>) {
 export function ImportStudents() {
   const qc = useQueryClient();
   const [file, setFile] = useState<File | null>(null);
-  const [mode, setMode] = useState<ImportMode>('CURRENT_TERM');
-  const [deactivate, setDeactivate] = useState(false);
+  const terms = useQuery({ queryKey: ['terms'], queryFn: () => apiGet<TermRow[]>('/api/terms') });
+  // The term this file is for. Empty means "add people only, no term tag".
+  const [pickedTerm, setPickedTerm] = useState<string | null>(null);
+  const [removeMissing, setRemoveMissing] = useState(false);
   const [tab, setTab] = useState<Tab>('review');
+  const term = pickedTerm ?? terms.data?.find((t) => t.isCurrent)?.code ?? '';
 
   const preview = useMutation({
-    mutationFn: () => apiSend<StudentImportPreview>('POST', '/api/imports/students/preview', form(file!, { mode })),
+    mutationFn: () => apiSend<StudentImportPreview>('POST', '/api/imports/students/preview', form(file!, { term })),
     onSuccess: (p) => setTab(p.counts.review > 0 ? 'review' : p.counts.created > 0 ? 'create' : 'update'),
   });
   const apply = useMutation({
@@ -31,7 +34,7 @@ export function ImportStudents() {
       apiSend<StudentImportResult>(
         'POST',
         '/api/imports/students/apply',
-        form(file!, { mode, deactivateMissing: String(deactivate), expectedSha256: preview.data!.fileSha256 }),
+        form(file!, { term, removeMissingTags: String(removeMissing), expectedSha256: preview.data!.fileSha256 }),
       ),
     onSuccess: () => void qc.invalidateQueries(),
   });
@@ -46,7 +49,7 @@ export function ImportStudents() {
   const reset = () => {
     preview.reset();
     apply.reset();
-    setDeactivate(false);
+    setRemoveMissing(false);
   };
   const p = preview.data;
 
@@ -56,7 +59,7 @@ export function ImportStudents() {
       <>
         <PageHead title="Import students" />
         <section className="card" style={{ maxWidth: 720 }}>
-          <Feedback fb={{ tone: 'ok', word: 'Imported', text: `${plural(c.created, 'person', 'people')} added, ${fmtNumber(c.updated)} updated, ${fmtNumber(c.unchanged)} unchanged${c.deactivated ? `, ${fmtNumber(c.deactivated)} set inactive` : ''}.` }} />
+          <Feedback fb={{ tone: 'ok', word: 'Imported', text: `${plural(c.created, 'person', 'people')} added, ${fmtNumber(c.updated)} updated, ${fmtNumber(c.unchanged)} unchanged. ${term ? `${plural(c.tagged, 'person', 'people')} tagged for ${term}${c.untagged ? `, ${fmtNumber(c.untagged)} tags removed` : ''}.` : 'No term tag was added.'}` }} />
           {c.review > 0 && <p className="secondary">{plural(c.review, 'row')} need a look. They are listed on the import page.</p>}
           <div className="row">
             <Link className="btn primary" to={`/admin/imports/${apply.data.importRunId}`}>
@@ -95,29 +98,29 @@ export function ImportStudents() {
             }}
           />
         </Field>
-        <fieldset className="stack" style={{ border: 0, padding: 0, margin: 0, gap: 0 }}>
-          <legend className="small medium secondary" style={{ marginBottom: 6 }}>
-            What kind of file is it?
-          </legend>
-          <label className="check">
-            <input type="radio" name="mode" checked={mode === 'CURRENT_TERM'} onChange={() => {
-                setMode('CURRENT_TERM');
-                reset();
-              }} />
-            <span>
-              <span className="medium">Current term list.</span> <span className="secondary">Everyone in the file is active.</span>
-            </span>
-          </label>
-          <label className="check">
-            <input type="radio" name="mode" checked={mode === 'HISTORICAL'} onChange={() => {
-                setMode('HISTORICAL');
-                reset();
-              }} />
-            <span>
-              <span className="medium">Historical load.</span> <span className="secondary">New people come in as inactive. Nobody's status changes.</span>
-            </span>
-          </label>
-        </fieldset>
+        <Field label="Which term is this list for?" hint="Everyone in the file gets this term's tag. A person can borrow only in a term they are tagged for, and athletes also need a scholarship.">
+          <select
+            className="select"
+            value={term}
+            onChange={(e) => {
+              setPickedTerm(e.target.value);
+              reset();
+            }}
+          >
+            {terms.data?.map((t) => (
+              <option key={t.id} value={t.code}>
+                {t.code}
+                {t.isCurrent ? ' (current)' : ''}
+              </option>
+            ))}
+            <option value="">No term. Add people only, no tag.</option>
+          </select>
+        </Field>
+        {terms.data?.length === 0 && (
+          <p className="secondary small">
+            No term exists yet. <Link to="/admin/terms">Add one on the Terms screen</Link> first, or choose "No term" to add people without a tag.
+          </p>
+        )}
         <div className="row">
           <button type="button" className="btn primary" disabled={!file || preview.isPending} onClick={() => preview.mutate()}>
             {preview.isPending ? 'Reading the file…' : 'Preview'}
@@ -130,7 +133,9 @@ export function ImportStudents() {
         <section className="card">
           <div className="card-head">
             <h2>Preview · {p.fileName}</h2>
-            <span className="small muted num">{plural(p.counts.rows, 'row')} read</span>
+            <span className="small muted num">
+              {plural(p.counts.rows, 'row')} read · {p.termCode ? `tagging ${p.termCode}` : 'no term tag'}
+            </span>
           </div>
           {p.alreadyAppliedAt && (
             <Feedback fb={{ tone: 'info', word: 'Seen before', text: `This exact file was applied on ${fmtDateTime(p.alreadyAppliedAt)}. Applying it again changes nothing that has not changed since.` }} />
@@ -139,6 +144,7 @@ export function ImportStudents() {
             <span className="pill lg num">{fmtNumber(p.counts.created)} to create</span>
             <span className="pill lg num">{fmtNumber(p.counts.updated)} to update</span>
             <span className="pill lg num">{fmtNumber(p.counts.unchanged)} unchanged</span>
+            {p.termCode && <span className="pill lg ok num">{fmtNumber(p.counts.tagged)} get the {p.termCode} tag</span>}
             <span className={`pill lg num${p.counts.review ? ' warn' : ''}`}>{fmtNumber(p.counts.review)} to review</span>
             {p.counts.rejected > 0 && <span className="pill lg err num">{fmtNumber(p.counts.rejected)} not imported</span>}
             {p.counts.pidsFixed > 0 && <span className="pill lg info num">{fmtNumber(p.counts.pidsFixed)} PIDs fixed</span>}
@@ -151,7 +157,7 @@ export function ImportStudents() {
                 ['create', `To create · ${p.counts.created}`],
                 ['update', `To update · ${p.counts.updated}`],
                 ['warnings', `Warnings · ${p.warnings.length}`],
-                ...(p.mode === 'CURRENT_TERM' ? [['missing', `Not in file · ${p.notInFile.length}`]] : []),
+                ...(p.termCode ? [['missing', `Tagged but not in file · ${p.notInFile.length}`]] : []),
               ] as [Tab, string][]
             ).map(([key, label]) => (
               <button key={key} type="button" role="tab" aria-selected={tab === key} onClick={() => setTab(key)}>
@@ -206,10 +212,10 @@ export function ImportStudents() {
 
           {tab === 'missing' &&
             (p.notInFile.length === 0 ? (
-              <EmptyState>Every active person is in this file.</EmptyState>
+              <EmptyState>Everyone tagged for {p.termCode} is in this file.</EmptyState>
             ) : (
               <div className="stack">
-                <p className="secondary">These people are active but not in the file. Nobody is ever deleted. You can set them inactive as part of this import.</p>
+                <p className="secondary">These people carry the {p.termCode} tag but are not in this file. Nobody is ever deleted. You can remove just their {p.termCode} tag as part of this import.</p>
                 <div className="table-wrap" style={{ maxHeight: 360 }}>
                   <table className="table">
                     <thead>
@@ -232,10 +238,10 @@ export function ImportStudents() {
             ))}
 
           <div className="row" style={{ borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-4)' }}>
-            {p.mode === 'CURRENT_TERM' && p.notInFile.length > 0 && (
+            {p.termCode && p.notInFile.length > 0 && (
               <label className="check">
-                <input type="checkbox" checked={deactivate} onChange={(e) => setDeactivate(e.target.checked)} />
-                Also set the {plural(p.notInFile.length, 'person', 'people')} not in the file inactive
+                <input type="checkbox" checked={removeMissing} onChange={(e) => setRemoveMissing(e.target.checked)} />
+                Also remove the {p.termCode} tag from the {plural(p.notInFile.length, 'person', 'people')} not in the file
               </label>
             )}
             <span className="spacer" />

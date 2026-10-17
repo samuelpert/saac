@@ -5,13 +5,13 @@ import type { BorrowerSummary, SearchResponse } from '@saac/shared';
 import { apiGet } from '../api/client';
 import { useIsAdmin } from '../auth/AuthContext';
 import { beep } from '../lib/beep';
-import { Feedback, type FeedbackMessage } from './ui';
+import { EligibilityPill, Feedback, type FeedbackMessage } from './ui';
 
 /**
  * The scan or search field. A barcode scanner types like a keyboard and presses Enter,
  * so Enter submits, feedback shows at once, and focus stays in the field.
  */
-export function ScanBox() {
+export function ScanBox({ term }: { term?: string }) {
   const isAdmin = useIsAdmin();
   const ref = useRef<HTMLInputElement>(null);
   const [value, setValue] = useState('');
@@ -25,7 +25,7 @@ export function ScanBox() {
     if (!q) return;
     let r: SearchResponse;
     try {
-      r = await apiGet<SearchResponse>(`/api/borrowers/search?q=${encodeURIComponent(q)}`);
+      r = await apiGet<SearchResponse>(`/api/borrowers/search?q=${encodeURIComponent(q)}${term ? `&term=${term}` : ''}`);
     } catch {
       setFb({ tone: 'err', word: 'Search failed', text: 'The server did not answer. Try again.' });
       beep('err');
@@ -37,7 +37,12 @@ export function ScanBox() {
     switch (r.kind) {
       case 'pid':
         next = one
-          ? { tone: 'ok', word: 'Found', text: `PID ${one.pid} · ${one.firstName} ${one.lastName}${one.active ? '' : ' · inactive'}`, action: { label: 'Open person page', href: `/people/${one.id}` } }
+          ? {
+              tone: one.eligibility === 'ELIGIBLE' ? 'ok' : 'warn',
+              word: one.eligibility === 'ELIGIBLE' ? 'Found' : one.eligibility === 'NO_SCHOLARSHIP' ? 'Not on scholarship' : `Not in ${one.eligibilityTerm ?? 'this term'}`,
+              text: `PID ${one.pid} · ${one.firstName} ${one.lastName}${one.eligibility === 'ELIGIBLE' ? ` · can borrow in ${one.eligibilityTerm}` : ''}`,
+              action: { label: 'Open person page', href: `/people/${one.id}` },
+            }
           : { tone: 'err', word: 'Not found', text: `No person has PID ${q}.`, action: isAdmin ? { label: 'Add person', href: `/people/new?pid=${q}` } : undefined };
         break;
       case 'pid-short':
@@ -113,7 +118,8 @@ export function ScanBox() {
                     {m.lastName}, {m.firstName}
                   </span>
                   <span className="muted small">{m.team?.name ?? ''}</span>
-                  {!m.active && <span className="pill">Inactive</span>}
+                  <span className="spacer" />
+                  <EligibilityPill status={m.eligibility} term={m.eligibilityTerm} />
                 </Link>
               ))}
             </div>

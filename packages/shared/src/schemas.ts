@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { Eligibility } from './eligibility';
 import { PID_PATTERN } from './pid';
 
 export const roleSchema = z.enum(['ADMIN', 'STAFF']);
@@ -126,13 +127,15 @@ export const borrowerInputSchema = z.object({
     .optional(),
   phone: optionalText(20).refine((v) => v == null || /^[0-9]{10}$/.test(v), 'A phone number has 10 digits'),
   onScholarship: z.boolean(),
-  active: z.boolean(),
+  /** The terms this person is tagged for. Replaces the whole set. */
+  termCodes: z.array(termCodeSchema).max(40).default([]),
 });
 export type BorrowerInput = z.input<typeof borrowerInputSchema>;
 
 export const borrowerListQuerySchema = z.object({
   q: z.string().trim().max(100).optional(),
-  active: z.enum(['true', 'false', 'all']).default('true'),
+  /** Only people tagged for this term. */
+  term: termCodeSchema.optional(),
   kind: borrowerKindSchema.optional(),
   teamId: z.uuid().optional(),
   page: z.coerce.number().int().min(1).default(1),
@@ -151,7 +154,12 @@ export interface BorrowerSummary {
   lastName: string;
   kind: BorrowerKind;
   team: TeamRef | null;
-  active: boolean;
+  onScholarship: boolean;
+  /** Term tags, newest term first. */
+  terms: string[];
+  /** Eligibility in `eligibilityTerm`: the term asked for, else the current term. Null when no term exists. */
+  eligibility: Eligibility | null;
+  eligibilityTerm: string | null;
 }
 
 export interface BorrowerListResponse {
@@ -187,7 +195,6 @@ export interface PastLoan {
 export interface BorrowerDetail extends BorrowerSummary {
   email: string | null;
   phone: string | null;
-  onScholarship: boolean;
   createdAt: string;
   updatedAt: string;
   classes: { termCode: string; subject: string; catalog: string; section: string }[];
@@ -208,8 +215,8 @@ export interface SearchResponse {
 
 // ---- Student import ---------------------------------------------------------
 
-export const importModeSchema = z.enum(['CURRENT_TERM', 'HISTORICAL']);
-export type ImportMode = z.infer<typeof importModeSchema>;
+/** The term a student file is for, or an empty string to add people without any term tag. */
+export const importTermSchema = z.union([z.literal(''), termCodeSchema]).default('');
 
 export interface ImportReviewRow {
   row: number;
@@ -248,14 +255,19 @@ export interface StudentImportCounts {
   rejected: number;
   pidsFixed: number;
   warnings: number;
+  /** People tagged for the term who are not in this file. */
   notInFile: number;
-  deactivated: number;
+  /** People who got the term tag from this import. */
+  tagged: number;
+  /** People whose term tag was removed because they were not in the file. */
+  untagged: number;
 }
 
 export interface StudentImportPreview {
   fileName: string;
   fileSha256: string;
-  mode: ImportMode;
+  /** Null when the import adds people without a term tag. */
+  termCode: string | null;
   counts: StudentImportCounts;
   rows: ImportPreviewRow[];
   review: ImportReviewRow[];
@@ -278,5 +290,5 @@ export interface ImportRunRow {
   user: string;
   createdAt: string;
   appliedAt: string | null;
-  counts: Partial<StudentImportCounts>;
+  counts: Partial<StudentImportCounts> & { termCode?: string | null };
 }

@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { BORROWER_KIND_LABEL, type BorrowerDetail } from '@saac/shared';
 import { apiGet } from '../api/client';
 import { useIsAdmin } from '../auth/AuthContext';
-import { EmptyState, ErrorText, Glyph, Loading, PageHead } from '../components/ui';
+import { EligibilityPill, EmptyState, ErrorText, Glyph, Loading, PageHead, TermTags } from '../components/ui';
 import { fmtDate } from '../lib/format';
 
 export function Person() {
@@ -24,7 +24,7 @@ export function Person() {
             <span className="num">PID {p.pid}</span>
             <span>· {BORROWER_KIND_LABEL[p.kind]}</span>
             {p.team && <span>· {p.team.name}</span>}
-            {p.active ? <span className="pill ok">Active</span> : <span className="pill">Inactive</span>}
+            <EligibilityPill status={p.eligibility} term={p.eligibilityTerm} />
             {p.kind === 'ATHLETE' && (p.onScholarship ? <span className="pill info">On scholarship</span> : <span className="pill warn">Not on scholarship</span>)}
           </span>
         }
@@ -101,7 +101,11 @@ export function Person() {
             <dt>Team</dt>
             <dd>{p.team?.name ?? <span className="muted">No team</span>}</dd>
             <dt>Scholarship</dt>
-            <dd>{p.onScholarship ? 'Yes' : 'No'}</dd>
+            <dd>{p.kind === 'ATHLETE' ? (p.onScholarship ? 'Yes' : 'No') : <span className="muted">Not applicable</span>}</dd>
+            <dt>Terms</dt>
+            <dd>
+              <TermTags terms={p.terms} />
+            </dd>
             <dt>On file since</dt>
             <dd className="num">{fmtDate(p.createdAt)}</dd>
           </dl>

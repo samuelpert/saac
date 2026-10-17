@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import type { Widget } from '@saac/shared';
+import { ELIGIBILITY_LABEL, type Eligibility, type Widget } from '@saac/shared';
 
 export type Tone = 'ok' | 'warn' | 'err' | 'info';
 
@@ -62,6 +62,33 @@ export function WidgetBody<T>({ widget, children }: { widget: Widget<T> | undefi
   if (!widget) return null;
   if (!widget.ok) return <WidgetError message={widget.error} />;
   return <>{children(widget.data)}</>;
+}
+
+const ELIGIBILITY_TONE: Record<Eligibility, Tone> = { ELIGIBLE: 'ok', NO_SCHOLARSHIP: 'warn', NOT_IN_TERM: 'info' };
+const ELIGIBILITY_MARK: Record<Eligibility, string> = { ELIGIBLE: '✓', NO_SCHOLARSHIP: '!', NOT_IN_TERM: '–' };
+
+/** Whether a person can borrow in a term. Always an icon and words, never color alone. */
+export function EligibilityPill({ status, term }: { status: Eligibility | null; term?: string | null }) {
+  if (!status) return <span className="muted">—</span>;
+  const label = status === 'NOT_IN_TERM' && term ? `Not in ${term}` : ELIGIBILITY_LABEL[status];
+  return (
+    <span className={`pill ${ELIGIBILITY_TONE[status]}`}>
+      <span aria-hidden="true">{ELIGIBILITY_MARK[status]}</span> {label}
+    </span>
+  );
+}
+
+export function TermTags({ terms }: { terms: string[] }) {
+  if (terms.length === 0) return <span className="muted">No term yet</span>;
+  return (
+    <span className="row" style={{ gap: 4 }}>
+      {terms.map((t) => (
+        <span key={t} className="pill num">
+          {t}
+        </span>
+      ))}
+    </span>
+  );
 }
 
 export function Chevron() {

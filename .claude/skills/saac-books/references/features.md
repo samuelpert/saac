@@ -10,8 +10,8 @@ Priority: P1 is needed at go-live, P2 soon after, P3 later.
 
 | ID | Feature | P |
 | --- | --- | --- |
-| A1 | Person record: PID, name, email, phone, team, role, scholarship yes/no, active | P1 |
-| A2 | Import the semester student list (`.xlsx` or `.csv`) with dry run, review list, and no deletes. Admin only. Spec in `student-import.md` | P1 |
+| A1 | Person record: PID, name, email, phone, team, role, scholarship yes/no, and the term tags they carry. Shows whether they can borrow in the current term | P1 |
+| A2 | Import the student list for a term (`.xlsx` or `.csv`): everyone in the file gets that term's tag. Dry run, review list, and no deletes. Admin only. Spec in `student-import.md` | P1 |
 | A3 | Search as you type by PID or name. The person page shows classes, books and tech held now with counts by type, what they held in past terms, scholarship, team, and contact | P1 |
 | A4 | Add or edit a person by hand for the rare late addition. Admin only, staff do not add people | P1 |
 | A5 | Teams with coach name and email, used by reports and escalation | P2 |
@@ -200,7 +200,7 @@ The user is designing this. Until it is settled, build only the generic scan fie
 - Opening or exporting the list changes no one's stage. Only an admin can mark someone `ON_HOLD`, and a staff user calling that action is rejected.
 
 **Phase 7: pilot and go-live**
-- People load from the real student file, as inactive for the historical load, then the current-term file activates the right people.
+- People load from the real student file with no term tag, then the current-term list tags the right people for the term.
 - Loans open when the pilot starts are loaded by scanning at the desk or by a simple file of PID, tag, and due date.
 - For one month the desk enters every transaction in both Access and the new app. Access stays the official system, and the new app never changes how the desk works.
 - Each week of the pilot, list the differences between the two systems and their causes, and fix them. Also note every time the host was down and for how long.

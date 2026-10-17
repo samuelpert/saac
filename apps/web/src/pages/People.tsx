@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Search } from 'lucide-react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { BORROWER_KIND_LABEL, type BorrowerListResponse, type TeamRef } from '@saac/shared';
+import { BORROWER_KIND_LABEL, type BorrowerListResponse, type TeamRef, type TermRow } from '@saac/shared';
 import { apiGet } from '../api/client';
 import { useIsAdmin } from '../auth/AuthContext';
-import { EmptyState, ErrorText, PageHead } from '../components/ui';
+import { EligibilityPill, EmptyState, ErrorText, PageHead, TermTags } from '../components/ui';
 import { fmtNumber, plural } from '../lib/format';
 
 export function People() {
@@ -14,7 +14,7 @@ export function People() {
   const [params, setParams] = useSearchParams();
   const [text, setText] = useState(params.get('q') ?? '');
   const q = params.get('q') ?? '';
-  const active = params.get('active') ?? 'true';
+  const term = params.get('term') ?? '';
   const kind = params.get('kind') ?? '';
   const teamId = params.get('teamId') ?? '';
   const holding = params.get('holding') ?? '';
@@ -40,11 +40,13 @@ export function People() {
   }, [text]);
 
   const teams = useQuery({ queryKey: ['teams'], queryFn: () => apiGet<TeamRef[]>('/api/teams') });
+  const terms = useQuery({ queryKey: ['terms'], queryFn: () => apiGet<TermRow[]>('/api/terms') });
   const list = useQuery({
-    queryKey: ['borrowers', q, active, kind, teamId, holding, page],
+    queryKey: ['borrowers', q, term, kind, teamId, holding, page],
     queryFn: () => {
-      const p = new URLSearchParams({ active, page: String(page), pageSize: '50' });
+      const p = new URLSearchParams({ page: String(page), pageSize: '50' });
       if (q) p.set('q', q);
+      if (term) p.set('term', term);
       if (kind) p.set('kind', kind);
       if (teamId) p.set('teamId', teamId);
       if (holding) p.set('holding', holding);
@@ -84,10 +86,13 @@ export function People() {
               }}
             />
           </div>
-          <select className="select" aria-label="Status" value={active} onChange={(e) => set({ active: e.target.value })}>
-            <option value="true">Active</option>
-            <option value="false">Inactive</option>
-            <option value="all">Everyone</option>
+          <select className="select" aria-label="Term" value={term} onChange={(e) => set({ term: e.target.value })}>
+            <option value="">Any term</option>
+            {terms.data?.map((t) => (
+              <option key={t.id} value={t.code}>
+                In {t.code}
+              </option>
+            ))}
           </select>
           <select className="select" aria-label="Role" value={kind} onChange={(e) => set({ kind: e.target.value })}>
             <option value="">Any role</option>
@@ -123,7 +128,8 @@ export function People() {
                   <th>Name</th>
                   <th>Role</th>
                   <th>Team</th>
-                  <th>Status</th>
+                  <th>Terms</th>
+                  <th>{data?.rows[0]?.eligibilityTerm ? `Can borrow in ${data.rows[0].eligibilityTerm}` : 'Can borrow'}</th>
                 </tr>
               </thead>
               <tbody>
@@ -137,7 +143,12 @@ export function People() {
                     </td>
                     <td>{BORROWER_KIND_LABEL[b.kind]}</td>
                     <td>{b.team?.name ?? <span className="muted">—</span>}</td>
-                    <td>{b.active ? <span className="pill ok">Active</span> : <span className="pill">Inactive</span>}</td>
+                    <td>
+                      <TermTags terms={b.terms} />
+                    </td>
+                    <td>
+                      <EligibilityPill status={b.eligibility} term={b.eligibilityTerm} />
+                    </td>
                   </tr>
                 ))}
               </tbody>

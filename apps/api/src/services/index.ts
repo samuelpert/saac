@@ -17,7 +17,7 @@ export function createServices(db: Db, config: Pick<Config, 'SESSION_IDLE_MINUTE
     auth: new AuthService(db, config.SESSION_IDLE_MINUTES),
     users: new UsersService(db),
     terms,
-    borrowers: new BorrowersService(db),
+    borrowers: new BorrowersService(db, terms),
     loans: new LoansService(db),
     studentImport: new StudentImportService(db),
     dashboard: new DashboardService(db, terms, { backupStaleHours: config.BACKUP_STALE_HOURS, diskPath: config.BACKUP_DIR }),

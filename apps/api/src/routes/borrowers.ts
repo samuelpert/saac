@@ -12,8 +12,8 @@ export function borrowerRoutes(s: Services) {
   const r = Router();
 
   r.get('/borrowers/search', async (req, res) => {
-    const { q } = z.object({ q: z.string().max(100).default('') }).parse(req.query);
-    res.json(await s.borrowers.search(q));
+    const { q, term } = z.object({ q: z.string().max(100).default(''), term: termCodeSchema.optional() }).parse(req.query);
+    res.json(await s.borrowers.search(q, term));
   });
 
   r.get('/borrowers', async (req, res) => {

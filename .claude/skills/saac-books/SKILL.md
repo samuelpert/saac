@@ -40,7 +40,7 @@ If the user changes any of these, update this table first, then the rest of the 
 
 ## Scale
 
-The student file holds 3,161 people because it is all-time history. About 1,000 are expected to be active in a given term (to confirm). Login accounts are a small separate group: the staff and student workers who run the desk. This is small for PostgreSQL, so do not add caching, queues, or microservices. Spend the effort on correctness (no double checkout, no lost audit entries) and on availability that is always accurate.
+The student file holds 3,161 people because it is all-time history. About 1,000 are expected to carry a given term's tag (to confirm). Login accounts are a small separate group: the staff and student workers who run the desk. This is small for PostgreSQL, so do not add caching, queues, or microservices. Spend the effort on correctness (no double checkout, no lost audit entries) and on availability that is always accurate.
 
 ## Repository layout
 
@@ -78,7 +78,8 @@ Use npm workspaces. Keep the API in layers: routes (HTTP only), services (busine
 9. **Dates.** Store UTC timestamps, display in America/New_York. Terms use codes like `FALL26`, `SPRING27`, `SUMMER27`.
 10. **No prices.** SAAC lends for free, so catalog tables hold no prices. If a charge ever happens, the amount is typed on that person's escalation record.
 11. **Real student files never enter the repo, chat logs, or tests.** Develop and test with the fake fixture and keep real files in `data-private/`.
-12. **Borrowers never log in.** Students, athletes, and staff who borrow are records, not users, and no page is shown to them. Only desk staff and admins have accounts.
+12. **Eligibility is a tag plus a scholarship.** There is no active/inactive flag. Every student import is for a term and gives everyone in the file that term's tag (`BorrowerTerm`); a person keeps every tag they earn. A person can borrow in a term when they carry its tag and, if they are an athlete, are on scholarship. Staff and graduate assistants only need the tag, because the scholarship flag on staff rows looks misused. The rule lives in one function, `computeEligibility` in `packages/shared`, and the dashboard, lists, person page and the checkout service all use it. Scholarship stays one yes/no on the person that every import refreshes. Phase 4 checkout enforces it on the server.
+13. **Borrowers never log in.** Students, athletes, and staff who borrow are records, not users, and no page is shown to them. Only desk staff and admins have accounts.
 
 ## Conventions
 
@@ -125,9 +126,9 @@ Finish each phase before starting the next, and update the tracker in `reference
 Do not guess these. Ask the user, and move the answer to Settled when it is known.
 
 1. How does a student's class list get into the system: typed per student, imported from a file, or another source?
-2. Is there a current-term-only list of active people? Default: everyone in the latest confirmed file is active, everyone else is inactive.
+2. (Settled: there is no active flag. Each import is for a term and tags everyone in the file. See Settled.)
 3. What are the column headers of the supervisor's semester scholarship Excel, if they differ from the sample file?
-4. Should someone not on scholarship be blocked from checkout, or only warned? Default: warn.
+4. (Settled: an athlete who is not on scholarship cannot borrow. See rule 13. Still open: whether an admin may override, with a reason.)
 5. Confirm the Sport column mapping in `references/student-import.md` (staff, GA, and tutor values are roles, `5th Year` and blank values go to review).
 6. What format does the Barnes & Noble term list arrive in (columns, file type)? Does it mark required versus optional books, and is it per class or per student?
 7. When copies are fewer than needs, who gets books first? Default: staff run Assign team by team in the order they choose.
@@ -166,6 +167,7 @@ Do not guess these. Ask the user, and move the answer to Settled when it is know
 - The student import columns are the ones in `assets/students.sample.xlsx`. CSV works as well as Excel.
 - Legacy Access tables are out of scope. The design starts from first principles.
 - The look is modern and minimal in FIU blue and gold, with a sans-serif font and Apple-style rounded corners. Details in `references/design.md`.
+- Phase 1 change (user decision): active/inactive is gone. Students carry a term tag per import (FALL26, SPRING27, ...) and can borrow in a term only with that tag and, for athletes, a scholarship. Details in rule 12 and `references/student-import.md`.
 - Phase 0 choice: no component library. Plain CSS classes in `apps/web/src/styles/base.css`, all values from `tokens.css`. Icons are Lucide. Data fetching is TanStack Query. A test fails if any hex color appears outside `tokens.css`.
 - Sessions are rows in a `Session` table with an httpOnly, SameSite=Strict cookie. Changes must carry the `x-saac-request: 1` header. Automatic refreshes send `x-saac-background: 1` and do not keep a session alive.
 - The design handoff (`docs/design-handoff/`) includes the FIU panther and SAAC wordmark images supplied by the user; they are used in the sidebar and sign-in screen. design.md still asks for the supervisor's OK before using FIU marks.

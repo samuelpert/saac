@@ -64,14 +64,16 @@ async function main() {
 
   // ---- People (3,161, the size of the real all-time file) ----------------------
   const teams = await db.team.findMany();
-  const people: { id: string; kind: 'ATHLETE' | 'STAFF' | 'GRAD_ASSISTANT'; teamId: string | null; active: boolean }[] = [];
+  // `inFall` marks the people tagged for FALL26. Only those on scholarship (athletes) or staff can borrow.
+  const people: { id: string; kind: 'ATHLETE' | 'STAFF' | 'GRAD_ASSISTANT'; teamId: string | null; inFall: boolean; onScholarship: boolean; canBorrow: boolean }[] = [];
   const borrowerRows = [];
   for (let i = 0; i < 3161; i++) {
     const kind = i % 40 === 0 ? 'STAFF' : i % 67 === 0 ? 'GRAD_ASSISTANT' : 'ATHLETE';
     const teamId = kind === 'ATHLETE' ? pick(teams).id : null;
-    const active = i < 1012;
+    const inFall = i < 1012;
+    const onScholarship = kind === 'ATHLETE' && chance(0.6);
     const id = randomUUID();
-    people.push({ id, kind, teamId, active });
+    people.push({ id, kind, teamId, inFall, onScholarship, canBorrow: inFall && (kind !== 'ATHLETE' || onScholarship) });
     borrowerRows.push({
       id,
       pid: String(9000000 + i * 3).padStart(7, '0'),
@@ -81,12 +83,18 @@ async function main() {
       teamId,
       email: chance(0.6) ? `fake${i}@example.edu` : null,
       phone: chance(0.5) ? `305555${String(1000 + (i % 9000)).padStart(4, '0')}` : null,
-      onScholarship: kind === 'ATHLETE' && chance(0.6),
-      active,
+      onScholarship,
     } as const);
   }
   for (const c of chunk(borrowerRows)) await db.borrower.createMany({ data: c });
-  const active = people.filter((p) => p.active);
+  // Term tags: FALL26 for the current group, SPRING26 for the group before them, SUMMER26 for a few.
+  const tags = people.flatMap((p, i) => [
+    ...(p.inFall ? [{ borrowerId: p.id, semesterId: terms.FALL26!.id }] : []),
+    ...(i < 986 ? [{ borrowerId: p.id, semesterId: terms.SPRING26!.id }] : []),
+    ...(i < 312 ? [{ borrowerId: p.id, semesterId: terms.SUMMER26!.id }] : []),
+  ]);
+  for (const c of chunk(tags)) await db.borrowerTerm.createMany({ data: c });
+  const active = people.filter((p) => p.canBorrow);
 
   // ---- Tech inventory ----------------------------------------------------------
   const types = Object.fromEntries(
@@ -260,7 +268,7 @@ async function main() {
     await db.emailLog.create({ data: { borrowerId: l.borrowerId, kind: 'REMINDER', status: 'SENT', subject: 'Fake reminder', body: 'Fake body', sentAt: new Date() } });
   }
 
-  console.log(`Seeded fake data: ${borrowerRows.length} people (${active.length} active), ${itemRows.length} tech items, ${copies.length} copies, ${bookLoans.length} book loans, ${itemLoans.length} tech loans.`);
+  console.log(`Seeded fake data: ${borrowerRows.length} people (${active.length} can borrow in FALL26), ${itemRows.length} tech items, ${copies.length} copies, ${bookLoans.length} book loans, ${itemLoans.length} tech loans.`);
   console.log(`Sign in as "admin" (ADMIN) or "desk" (STAFF) with password: ${password}`);
   void admin;
 }

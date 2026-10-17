@@ -2,17 +2,17 @@ import ExcelJS from 'exceljs';
 import { Router } from 'express';
 import multer from 'multer';
 import { z } from 'zod';
-import { importModeSchema, type ImportRunRow } from '@saac/shared';
+import { importTermSchema, type ImportRunRow } from '@saac/shared';
 import { badRequest, notFound } from '../http/errors';
 import type { Services } from '../services';
 import { shortName } from '../services/dashboard.service';
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024, files: 1 } });
 
-const previewBody = z.object({ mode: importModeSchema });
+const previewBody = z.object({ term: importTermSchema });
 const applyBody = z.object({
-  mode: importModeSchema,
-  deactivateMissing: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
+  term: importTermSchema,
+  removeMissingTags: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
   expectedSha256: z.string().regex(/^[0-9a-f]{64}$/).optional(),
 });
 const reviewListBody = z.object({
@@ -31,14 +31,14 @@ export function importRoutes(s: Services) {
 
   r.post('/imports/students/preview', upload.single('file'), async (req, res) => {
     const file = requireFile(req.file);
-    const { mode } = previewBody.parse(req.body);
-    res.json(await s.studentImport.preview(file.originalname, file.buffer, mode));
+    const { term } = previewBody.parse(req.body);
+    res.json(await s.studentImport.preview(file.originalname, file.buffer, term));
   });
 
   r.post('/imports/students/apply', upload.single('file'), async (req, res) => {
     const file = requireFile(req.file);
-    const { mode, deactivateMissing, expectedSha256 } = applyBody.parse(req.body);
-    res.json(await s.studentImport.apply(req.user!.id, file.originalname, file.buffer, mode, { deactivateMissing, expectedSha256 }));
+    const { term, removeMissingTags, expectedSha256 } = applyBody.parse(req.body);
+    res.json(await s.studentImport.apply(req.user!.id, file.originalname, file.buffer, term, { removeMissingTags, expectedSha256 }));
   });
 
   // The review list as a spreadsheet. PIDs are written as text so Excel keeps their leading zeros.

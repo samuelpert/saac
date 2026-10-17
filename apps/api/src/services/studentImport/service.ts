@@ -1,7 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import type {
   FieldChange,
-  ImportMode,
   ImportPreviewRow,
   ImportReviewRow,
   StudentImportCounts,
@@ -10,7 +9,7 @@ import type {
 } from '@saac/shared';
 import type { Db, Tx } from '../../db';
 import type { Borrower, Prisma } from '../../generated/prisma/client';
-import { badRequest } from '../../http/errors';
+import { badRequest, notFound } from '../../http/errors';
 import { audit, auditMany, type AuditEntry } from '../audit';
 import { borrowerSnapshot } from '../borrowers.service';
 import { normalizeRows, sportKey, type NormalizedPerson, type SportMapping } from './normalize';
@@ -18,23 +17,32 @@ import { parseStudentFile } from './parse';
 
 export const STUDENT_IMPORT_KIND = 'STUDENTS';
 
-const COMPARED = ['firstName', 'lastName', 'onScholarship', 'kind', 'teamId', 'email', 'phone', 'active'] as const;
+const COMPARED = ['firstName', 'lastName', 'onScholarship', 'kind', 'teamId', 'email', 'phone'] as const;
 type Compared = (typeof COMPARED)[number];
 type Values = Pick<Borrower, Compared>;
 
+interface TermInfo {
+  id: string;
+  code: string;
+}
+
 interface Plan {
+  term: TermInfo | null;
   creates: (Values & { id: string; pid: string })[];
-  updates: { before: Borrower; data: Partial<Values> }[];
+  /** `tag` is true when the person gets the term tag from this import. */
+  updates: { before: Borrower; data: Partial<Values>; tag: boolean }[];
+  /** Existing people who already carry the tag and have nothing else to change. */
   unchanged: number;
   rows: ImportPreviewRow[];
   review: ImportReviewRow[];
   warnings: StudentImportPreview['warnings'];
+  /** People tagged for the term who are not in the file. */
   notInFile: Borrower[];
   pidsFixed: number;
   rowCount: number;
 }
 
-function valuesFor(p: NormalizedPerson, mode: ImportMode): Values {
+function valuesFor(p: NormalizedPerson): Values {
   return {
     firstName: p.firstName,
     lastName: p.lastName,
@@ -43,19 +51,17 @@ function valuesFor(p: NormalizedPerson, mode: ImportMode): Values {
     teamId: p.teamId ?? null,
     email: p.email ?? null,
     phone: p.phone ?? null,
-    active: mode === 'CURRENT_TERM',
   };
 }
 
 /** Only the fields the file has information for. A blank never erases a stored value. */
-function changesFor(p: NormalizedPerson, existing: Borrower, mode: ImportMode): Partial<Values> {
+function changesFor(p: NormalizedPerson, existing: Borrower): Partial<Values> {
   const incoming: Partial<Values> = { firstName: p.firstName, lastName: p.lastName };
   if (p.onScholarship !== undefined) incoming.onScholarship = p.onScholarship;
   if (p.kind !== undefined) incoming.kind = p.kind;
   if (p.teamId !== undefined) incoming.teamId = p.teamId;
   if (p.email !== undefined) incoming.email = p.email;
   if (p.phone !== undefined) incoming.phone = p.phone;
-  if (mode === 'CURRENT_TERM') incoming.active = true; // a historical load never changes who is active
   const data: Partial<Values> = {};
   for (const key of COMPARED) {
     if (key in incoming && incoming[key] !== existing[key]) (data as Record<string, unknown>)[key] = incoming[key];
@@ -66,21 +72,31 @@ function changesFor(p: NormalizedPerson, existing: Borrower, mode: ImportMode): 
 export class StudentImportService {
   constructor(private readonly db: Db) {}
 
-  private async plan(client: Db | Tx, fileName: string, buffer: Buffer, mode: ImportMode): Promise<Plan> {
+  private async plan(client: Db | Tx, fileName: string, buffer: Buffer, termCode: string): Promise<Plan> {
     const parsed = await parseStudentFile(fileName, buffer);
     if (parsed.rows.length === 0) throw badRequest('The file has a header row but no people');
 
-    const [mappingRows, teams, existingRows] = await Promise.all([
+    let term: TermInfo | null = null;
+    if (termCode !== '') {
+      const t = await client.semester.findUnique({ where: { code: termCode } });
+      if (!t) throw notFound(`No term ${termCode}. Add it on the Terms screen first.`);
+      term = { id: t.id, code: t.code };
+    }
+
+    const [mappingRows, teams, existingRows, tagged] = await Promise.all([
       client.groupMapping.findMany(),
       client.team.findMany({ select: { id: true, name: true } }),
       client.borrower.findMany(),
+      term ? client.borrowerTerm.findMany({ where: { semesterId: term.id }, select: { borrowerId: true } }) : Promise.resolve([]),
     ]);
+    const taggedIds = new Set(tagged.map((t) => t.borrowerId));
     const mappings = new Map<string, SportMapping>(mappingRows.map((m) => [sportKey(m.sourceValue), { kind: m.kind, teamId: m.teamId }]));
     const teamName = new Map(teams.map((t) => [t.id, t.name]));
     const existing = new Map(existingRows.map((b) => [b.pid, b]));
 
     const norm = normalizeRows(parsed.rows, mappings);
     const plan: Plan = {
+      term,
       creates: [],
       updates: [],
       unchanged: 0,
@@ -105,25 +121,26 @@ export class StudentImportService {
       teamId: 'Team',
       email: 'Email',
       phone: 'Phone',
-      active: 'Active',
     };
 
     for (const p of norm.people) {
       const name = `${p.lastName}, ${p.firstName}`;
       const before = existing.get(p.pid);
       if (!before) {
-        plan.creates.push({ id: randomUUID(), pid: p.pid, ...valuesFor(p, mode) });
+        plan.creates.push({ id: randomUUID(), pid: p.pid, ...valuesFor(p) });
         plan.rows.push({ row: p.row, pid: p.pid, name, action: 'create', changes: [] });
         continue;
       }
-      const data = changesFor(p, before, mode);
+      const data = changesFor(p, before);
       const keys = Object.keys(data) as Compared[];
-      if (keys.length === 0) {
+      const tag = term !== null && !taggedIds.has(before.id);
+      if (keys.length === 0 && !tag) {
         plan.unchanged++;
         continue;
       }
-      plan.updates.push({ before, data });
+      plan.updates.push({ before, data, tag });
       const changes: FieldChange[] = keys.map((k) => ({ field: fieldLabel[k], from: display(k, before[k]), to: display(k, data[k]) }));
+      if (tag) changes.push({ field: 'Term tag', from: null, to: term!.code });
       plan.rows.push({ row: p.row, pid: p.pid, name, action: 'update', changes });
     }
 
@@ -140,15 +157,15 @@ export class StudentImportService {
       }
     }
 
-    if (mode === 'CURRENT_TERM') {
+    if (term) {
       plan.notInFile = existingRows
-        .filter((b) => b.active && !norm.pidsInFile.has(b.pid))
+        .filter((b) => taggedIds.has(b.id) && !norm.pidsInFile.has(b.pid))
         .sort((a, b) => a.lastName.localeCompare(b.lastName) || a.firstName.localeCompare(b.firstName));
     }
     return plan;
   }
 
-  private counts(plan: Plan, deactivated: number): StudentImportCounts {
+  private counts(plan: Plan, untagged: number): StudentImportCounts {
     return {
       rows: plan.rowCount,
       created: plan.creates.length,
@@ -159,22 +176,25 @@ export class StudentImportService {
       pidsFixed: plan.pidsFixed,
       warnings: plan.warnings.length,
       notInFile: plan.notInFile.length,
-      deactivated,
+      tagged: plan.term ? plan.creates.length + plan.updates.filter((u) => u.tag).length : 0,
+      untagged,
     };
   }
 
   /** Dry run. Reads only; nothing is saved. */
-  async preview(fileName: string, buffer: Buffer, mode: ImportMode): Promise<StudentImportPreview> {
+  async preview(fileName: string, buffer: Buffer, termCode: string): Promise<StudentImportPreview> {
     const fileSha256 = createHash('sha256').update(buffer).digest('hex');
-    const plan = await this.plan(this.db, fileName, buffer, mode);
-    const previous = await this.db.importRun.findFirst({
+    const plan = await this.plan(this.db, fileName, buffer, termCode);
+    // The same file for another term is a different import, so match the term too.
+    const runs = await this.db.importRun.findMany({
       where: { kind: STUDENT_IMPORT_KIND, fileSha256, appliedAt: { not: null } },
       orderBy: { appliedAt: 'desc' },
     });
+    const previous = runs.find((r) => ((r.counts as { termCode?: string | null } | null)?.termCode ?? '') === termCode);
     return {
       fileName,
       fileSha256,
-      mode,
+      termCode: plan.term?.code ?? null,
       counts: this.counts(plan, 0),
       rows: plan.rows,
       review: plan.review,
@@ -192,70 +212,76 @@ export class StudentImportService {
     actorId: string,
     fileName: string,
     buffer: Buffer,
-    mode: ImportMode,
-    opts: { deactivateMissing: boolean; expectedSha256?: string },
+    termCode: string,
+    opts: { removeMissingTags: boolean; expectedSha256?: string },
   ): Promise<StudentImportResult> {
     const fileSha256 = createHash('sha256').update(buffer).digest('hex');
     if (opts.expectedSha256 && opts.expectedSha256 !== fileSha256) {
       throw badRequest('This is not the file that was previewed. Preview it again.');
     }
-    if (opts.deactivateMissing && mode !== 'CURRENT_TERM') {
-      throw badRequest('Only a current-term import can set people inactive');
+    if (opts.removeMissingTags && termCode === '') {
+      throw badRequest('Pick a term to remove term tags');
     }
 
     return this.db.$transaction(
       async (tx) => {
         // One student import at a time.
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('saac:student-import'))`;
-        const plan = await this.plan(tx, fileName, buffer, mode);
+        const plan = await this.plan(tx, fileName, buffer, termCode);
         const entries: AuditEntry[] = [];
 
+        const term = plan.term;
+        const tags: { borrowerId: string; semesterId: string }[] = [];
         if (plan.creates.length > 0) {
           await tx.borrower.createMany({ data: plan.creates });
           for (const c of plan.creates) {
             const { id, ...after } = c;
-            entries.push({ userId: actorId, action: 'borrower.import_create', entityType: 'Borrower', entityId: id, after });
+            if (term) tags.push({ borrowerId: id, semesterId: term.id });
+            entries.push({ userId: actorId, action: 'borrower.import_create', entityType: 'Borrower', entityId: id, after: { ...after, ...(term ? { addedTerm: term.code } : {}) } });
           }
         }
         for (const u of plan.updates) {
-          const after = await tx.borrower.update({ where: { id: u.before.id }, data: u.data });
+          const after = Object.keys(u.data).length > 0 ? await tx.borrower.update({ where: { id: u.before.id }, data: u.data }) : u.before;
+          if (u.tag && term) tags.push({ borrowerId: u.before.id, semesterId: term.id });
           entries.push({
             userId: actorId,
             action: 'borrower.import_update',
             entityType: 'Borrower',
             entityId: after.id,
             before: borrowerSnapshot(u.before),
-            after: borrowerSnapshot(after),
+            after: { ...borrowerSnapshot(after), ...(u.tag && term ? { addedTerm: term.code } : {}) },
           });
         }
-        let deactivated = 0;
-        if (opts.deactivateMissing && plan.notInFile.length > 0) {
+        if (tags.length > 0) await tx.borrowerTerm.createMany({ data: tags, skipDuplicates: true });
+
+        let untagged = 0;
+        if (opts.removeMissingTags && term && plan.notInFile.length > 0) {
           const ids = plan.notInFile.map((b) => b.id);
-          deactivated = (await tx.borrower.updateMany({ where: { id: { in: ids }, active: true }, data: { active: false } })).count;
+          untagged = (await tx.borrowerTerm.deleteMany({ where: { semesterId: term.id, borrowerId: { in: ids } } })).count;
           for (const b of plan.notInFile) {
             entries.push({
               userId: actorId,
-              action: 'borrower.import_deactivate',
+              action: 'borrower.import_untag',
               entityType: 'Borrower',
               entityId: b.id,
-              before: { active: true },
-              after: { active: false },
+              before: { term: term.code, tagged: true },
+              after: { term: term.code, tagged: false },
             });
           }
         }
         await auditMany(tx, entries);
 
-        const counts = this.counts(plan, deactivated);
+        const counts = this.counts(plan, untagged);
         const stored: Prisma.InputJsonObject = {
           ...counts,
-          mode,
+          termCode: term?.code ?? null,
           // Review rows hold a row number, a PID and a reason only, never names or contact details.
           reviewRows: plan.review.map((r) => ({ row: r.row, pid: r.pid, reason: r.reason, scope: r.scope })),
         };
         const run = await tx.importRun.create({
           data: { kind: STUDENT_IMPORT_KIND, fileName, fileSha256, userId: actorId, counts: stored, appliedAt: new Date() },
         });
-        await audit(tx, { userId: actorId, action: 'import.students', entityType: 'ImportRun', entityId: run.id, after: { fileName, mode, ...counts } });
+        await audit(tx, { userId: actorId, action: 'import.students', entityType: 'ImportRun', entityId: run.id, after: { fileName, termCode: term?.code ?? null, ...counts } });
         return { importRunId: run.id, counts };
       },
       { timeout: 120_000, maxWait: 10_000 },

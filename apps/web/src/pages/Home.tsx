@@ -70,7 +70,7 @@ export function Home() {
       <div className="row">
         {d && d.terms.length > 0 && <TermSelect terms={d.terms} value={term} onChange={(code) => setParams(code ? { term: code } : {})} />}
         {d?.isPast && <PastTermPill />}
-        <ScanBox />
+        <ScanBox term={term || undefined} />
       </div>
 
       {q.isError && !d && <ErrorText error={q.error} />}
@@ -89,7 +89,7 @@ function Dashboard({ d, isAdmin, withTerm }: { d: DashboardResponse; isAdmin: bo
   return (
     <>
       <div className="grid-tiles">
-        <Link className="tile" to="/people?active=true">
+        <Link className="tile" to={withTerm('/people')}>
           <span className="label">People</span>
           <WidgetBody widget={w.people}>
             {(p) => (
@@ -151,7 +151,7 @@ function Dashboard({ d, isAdmin, withTerm }: { d: DashboardResponse; isAdmin: bo
             )}
           </WidgetBody>
         </Link>
-        <Link className="tile accent" to={withTerm('/people', { holding: d.term?.code ?? '', active: 'all' })}>
+        <Link className="tile accent" to={withTerm('/people', { holding: d.term?.code ?? '' })}>
           <span className="label">Deadline</span>
           <WidgetBody widget={w.deadline}>
             {(dl) =>

@@ -32,7 +32,7 @@ export interface DashboardOptions {
 // Matches no row. Used when no term exists yet, so every term widget shows zero.
 const NO_TERM = '00000000-0000-0000-0000-000000000000';
 
-const HIDDEN_FROM_ACTIVITY = ['user.login', 'user.logout', 'borrower.import_create', 'borrower.import_update', 'borrower.import_deactivate'];
+const HIDDEN_FROM_ACTIVITY = ['user.login', 'user.logout', 'borrower.import_create', 'borrower.import_update', 'borrower.import_untag'];
 
 const ACTION_LABEL: Record<string, string> = {
   'borrower.create': 'Added person',
@@ -82,7 +82,7 @@ export class DashboardService {
     const termId = term?.id ?? NO_TERM;
 
     const [people, booksOut, techOut, pastDue, holds, deadline, attention, teams, books, inventory, activity, imports, health] = await Promise.all([
-      this.safe('people', () => this.people()),
+      this.safe('people', () => this.people(termId)),
       this.safe('booksOut', () => this.db.bookLoan.count({ where: bookLoanWhere({ semesterId: termId, filter: 'open' }) })),
       this.safe('techOut', () => this.db.itemLoan.count({ where: itemLoanWhere({ semesterId: termId, filter: 'open' }) })),
       this.safe('pastDue', () => this.pastDue(termId, now)),
@@ -119,8 +119,9 @@ export class DashboardService {
     };
   }
 
-  async people(): Promise<PeopleTile> {
-    const groups = await this.db.borrower.groupBy({ by: ['kind'], where: { active: true }, _count: { _all: true } });
+  /** People tagged for the term. Athletes, and staff including graduate assistants. */
+  async people(termId: string): Promise<PeopleTile> {
+    const groups = await this.db.borrower.groupBy({ by: ['kind'], where: { terms: { some: { semesterId: termId } } }, _count: { _all: true } });
     const by = (k: string) => groups.find((g) => g.kind === k)?._count._all ?? 0;
     const athletes = by('ATHLETE');
     const staff = by('STAFF') + by('GRAD_ASSISTANT');

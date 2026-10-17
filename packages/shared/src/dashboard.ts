@@ -3,6 +3,7 @@ import type { TermRow } from './schemas';
 /** Each widget succeeds or fails on its own, so one broken query never blanks the page. */
 export type Widget<T> = { ok: true; data: T } | { ok: false; error: string };
 
+/** People tagged for the selected term. */
 export interface PeopleTile {
   total: number;
   athletes: number;

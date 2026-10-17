@@ -52,7 +52,8 @@ Rules for the flow:
 - A review row never blocks the rest of the file.
 - A PID that appears twice in the file goes to review.
 - The same first and last name on different PIDs is a "possible duplicate" warning. Never merge automatically.
-- Activity: the import has two modes. "Current term" marks everyone in the file active and lists everyone else as "not in file" for the admin to set inactive. "Historical load" imports everyone as inactive. Never delete anyone.
+- Term tags: the admin picks the term the file is for (default: the current term), and everyone in the file gets that term's tag. A person keeps every tag they have earned, so a student on the Fall 2026 list and again on the Spring 2027 list carries both. Picking "No term" adds people without a tag, for example the all-time file. Someone tagged for the term but missing from the file is listed as "tagged but not in file", and the admin may tick a box to remove just that term's tag. Never delete anyone.
+- Eligibility: a person can borrow in a term when they carry its tag and, for athletes, are on scholarship (`computeEligibility`). The scholarship value comes from the file and is refreshed by every import.
 - Export PIDs as text, so Excel does not drop leading zeros again.
 
 ## 5. What the real file contains
@@ -79,13 +80,14 @@ Counts from the file the user supplied (Access `Students` export). No personal v
 
 Consequences to remember: about 39% of people have no email, so reminders need a fallback route for them. The scholarship flag on `Staff` rows looks misused, so never apply scholarship rules to staff.
 
-## 6. How the rules were implemented (phase 1, confirm with the user)
+## 6. How the rules were implemented (phase 1, updated for term tags)
 
 - Review has two scopes. **Row**: the row is not imported at all (bad PID, a PID repeated in the file, a blank first or last name). **Field**: the person is imported or updated, only the bad value is left out (scholarship not yes/no, blank or unknown Sport, `5th Year` with no team, a bad phone or email). Field review lets a 5th-year athlete borrow while staff pick the team on the person page.
 - A new person whose scholarship value is unreadable is stored as not on scholarship until fixed. A new person with no usable Sport is stored as an athlete with no team.
 - `@fiu.edu` with nothing before the `@` is treated as a blank, so it never erases an email already on file.
 - The preview is a pure dry run and writes nothing, not even the `ImportRun`. The run is recorded when the admin applies, together with the counts and the review rows (row number, PID, reason; never names or contact details).
 - Apply re-reads the file and rebuilds the plan inside one transaction, so it reflects the database at that moment. The browser sends the file again with the SHA-256 from the preview, and a different file is refused.
-- "Current term" can also set people not in the file inactive, but only when the admin ticks that box. "Historical load" creates new people as inactive and never changes anyone's active flag.
+- The preview shows how many people get the term tag. Tagging an existing person counts as an update, and importing the same file for the same term again changes nothing. The same file for another term is a different import.
+- A term must exist (Terms screen) before a file can be imported for it.
 - Possible duplicates are checked within the file and against people already on file.
 - Every created or updated person gets its own audit entry with before and after values, plus one entry for the import with the counts.

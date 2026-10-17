@@ -35,6 +35,7 @@ export function Imports() {
                 <tr>
                   <th>When</th>
                   <th>Kind</th>
+                  <th>Term</th>
                   <th>File</th>
                   <th>By</th>
                   <th className="n">Created</th>
@@ -50,6 +51,7 @@ export function Imports() {
                       <Link to={`/admin/imports/${r.id}`}>{fmtDateTime(r.appliedAt ?? r.createdAt)}</Link>
                     </td>
                     <td>{KIND[r.kind] ?? r.kind}</td>
+                    <td>{r.counts.termCode ?? <span className="muted">No term</span>}</td>
                     <td>{r.fileName}</td>
                     <td>{r.user}</td>
                     <td className="n">{fmtNumber(r.counts.created ?? 0)}</td>
@@ -88,7 +90,8 @@ export function ImportDetail() {
           <span className="pill lg num">{fmtNumber(c.updated ?? 0)} updated</span>
           <span className="pill lg num">{fmtNumber(c.unchanged ?? 0)} unchanged</span>
           <span className={`pill lg num${c.review ? ' warn' : ''}`}>{fmtNumber(c.review ?? 0)} to review</span>
-          {Boolean(c.deactivated) && <span className="pill lg num">{fmtNumber(c.deactivated ?? 0)} set inactive</span>}
+          <span className="pill lg num">{c.termCode ? `Tagged ${fmtNumber(c.tagged ?? 0)} for ${c.termCode}` : 'No term tag'}</span>
+          {Boolean(c.untagged) && <span className="pill lg num">{fmtNumber(c.untagged ?? 0)} tags removed</span>}
         </div>
         <p className="xsmall muted num">SHA-256 {r.fileSha256}</p>
       </section>

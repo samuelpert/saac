@@ -19,8 +19,12 @@ async function buildFixtures(db: Db) {
   });
   const football = await db.team.findUniqueOrThrow({ where: { name: 'Football' } });
   const baseball = await db.team.findUniqueOrThrow({ where: { name: 'Baseball' } });
-  const mk = (pid: string, teamId: string | null, kind: 'ATHLETE' | 'STAFF' | 'GRAD_ASSISTANT' = 'ATHLETE', active = true) =>
-    db.borrower.create({ data: { pid, firstName: 'Fake', lastName: `Person${pid}`, kind, teamId, active } });
+  // `inTerm` is the FALL26 tag. Not-in-term people exist on file but are not counted for the term.
+  const mk = async (pid: string, teamId: string | null, kind: 'ATHLETE' | 'STAFF' | 'GRAD_ASSISTANT' = 'ATHLETE', inTerm = true) => {
+    const b = await db.borrower.create({ data: { pid, firstName: 'Fake', lastName: `Person${pid}`, kind, teamId, onScholarship: kind === 'ATHLETE' } });
+    if (inTerm) await db.borrowerTerm.create({ data: { borrowerId: b.id, semesterId: term.id } });
+    return b;
+  };
   const [a1, a2, a3, a4, a5] = await Promise.all([mk('9100001', football.id), mk('9100002', football.id), mk('9100003', football.id), mk('9100004', baseball.id), mk('9100005', baseball.id)]);
   await mk('9100006', null, 'STAFF');
   await mk('9100007', null, 'GRAD_ASSISTANT');
@@ -93,10 +97,11 @@ describe.skipIf(!hasDb)('dashboard', () => {
     const w = d.widgets;
     const sql = async (q: string) => Number((await t.db.$queryRawUnsafe<{ n: bigint }[]>(q))[0]!.n);
     const tid = fx.term.id;
+    const inTerm = `"Borrower" b JOIN "BorrowerTerm" t ON t."borrowerId" = b.id WHERE t."semesterId" = '${tid}'`;
     expect(data(w.people)).toEqual({
-      total: await sql(`SELECT count(*) n FROM "Borrower" WHERE active`),
-      athletes: await sql(`SELECT count(*) n FROM "Borrower" WHERE active AND kind = 'ATHLETE'`),
-      staff: await sql(`SELECT count(*) n FROM "Borrower" WHERE active AND kind <> 'ATHLETE'`),
+      total: await sql(`SELECT count(*) n FROM ${inTerm}`),
+      athletes: await sql(`SELECT count(*) n FROM ${inTerm} AND b.kind = 'ATHLETE'`),
+      staff: await sql(`SELECT count(*) n FROM ${inTerm} AND b.kind <> 'ATHLETE'`),
     });
     expect(data(w.booksOut)).toBe(await sql(`SELECT count(*) n FROM "BookLoan" WHERE "semesterId" = '${tid}' AND "closedAt" IS NULL`));
     expect(data(w.techOut)).toBe(await sql(`SELECT count(*) n FROM "ItemLoan" WHERE "semesterId" = '${tid}' AND "closedAt" IS NULL`));
@@ -110,7 +115,7 @@ describe.skipIf(!hasDb)('dashboard', () => {
     );
     expect(data(w.deadline)?.daysLeft).toBeGreaterThan(40);
     // Known values for the fixture, as a second check.
-    expect(data(w.people)).toEqual({ total: 7, athletes: 5, staff: 2 });
+    expect(data(w.people)).toEqual({ total: 7, athletes: 5, staff: 2 }); // the 8th person is on file but has no FALL26 tag
     expect(data(w.booksOut)).toBe(2);
     expect(data(w.techOut)).toBe(2);
     expect(data(w.pastDue)).toEqual({ total: 2, books: 1, tech: 1 });
@@ -118,7 +123,7 @@ describe.skipIf(!hasDb)('dashboard', () => {
 
   it('every tile number opens a list with exactly those rows', async () => {
     const w = (await load()).widgets;
-    expect((await admin.get('/api/borrowers?active=true&pageSize=200')).body.total).toBe(data(w.people).total);
+    expect((await admin.get('/api/borrowers?term=FALL26&pageSize=200')).body.total).toBe(data(w.people).total);
     expect((await admin.get('/api/loans/books')).body.rows).toHaveLength(data(w.booksOut));
     expect((await admin.get('/api/loans/items')).body.rows).toHaveLength(data(w.techOut));
     const pastDue = (await admin.get('/api/loans/all?view=pastdue')).body.rows;
@@ -126,6 +131,8 @@ describe.skipIf(!hasDb)('dashboard', () => {
     expect(pastDue.every((r: { pastDue: boolean }) => r.pastDue)).toBe(true);
     expect((await admin.get('/api/loans/items?view=holds')).body.holds).toHaveLength(data(w.holds).total);
     expect((await admin.get('/api/borrowers?holding=FALL26&pageSize=200')).body.total).toBe(data(w.deadline)!.peopleHolding);
+    // The people list for the term also shows a past term's own tags, not the current one's.
+    expect((await admin.get('/api/borrowers?term=SPRING26&pageSize=200')).body.total).toBe(0);
   });
 
   it('team progress, books and inventory match the fixture', async () => {
@@ -189,7 +196,7 @@ describe.skipIf(!hasDb)('dashboard', () => {
 
   it('recent activity masks PIDs and hides contact details', async () => {
     await admin.put(`/api/borrowers/${(await t.db.borrower.findFirstOrThrow({ where: { pid: '9100001' } })).id}`).send({
-      pid: '9100001', firstName: 'Fake', lastName: 'Renamed', kind: 'ATHLETE', teamId: fx.football.id, email: 'x@example.edu', phone: '3055551234', onScholarship: true, active: true,
+      pid: '9100001', firstName: 'Fake', lastName: 'Renamed', kind: 'ATHLETE', teamId: fx.football.id, email: 'x@example.edu', phone: '3055551234', onScholarship: true, termCodes: ['FALL26'],
     });
     const rows = data((await load()).widgets.activity);
     expect(rows[0]).toMatchObject({ action: 'Edited person', label: 'PID 9•••••1' });
@@ -198,8 +205,9 @@ describe.skipIf(!hasDb)('dashboard', () => {
 
   it('loads the full 3,161-person table quickly', async () => {
     await t.db.borrower.createMany({
-      data: Array.from({ length: 3161 }, (_, i) => ({ pid: String(9200000 + i), firstName: 'Bulk', lastName: `Fake${i}`, active: i < 1000 })),
+      data: Array.from({ length: 3161 }, (_, i) => ({ id: `bulk-${i}`, pid: String(9200000 + i), firstName: 'Bulk', lastName: `Fake${i}` })),
     });
+    await t.db.borrowerTerm.createMany({ data: Array.from({ length: 1000 }, (_, i) => ({ borrowerId: `bulk-${i}`, semesterId: fx.term.id })) });
     const started = Date.now();
     await load();
     expect(Date.now() - started).toBeLessThan(2000);
