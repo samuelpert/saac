@@ -220,7 +220,7 @@ function ItemForm({ types, item, onClose }: { types: ItemTypeRow[]; item?: Inven
             ))}
           </select>
         </Field>
-        <Field label="Name" hint="e.g. SAAC Laptop 942">
+        <Field label="Name" hint="e.g. SAAC LAPTOP 942">
           <input
             className="input"
             autoFocus
@@ -228,7 +228,7 @@ function ItemForm({ types, item, onClose }: { types: ItemTypeRow[]; item?: Inven
             onChange={(e) => setForm({ ...form, name: e.target.value, assetTag: tagEdited ? form.assetTag : tagFromName(e.target.value) })}
           />
         </Field>
-        <Field label="Tag" hint="Filled in from the name without spaces, e.g. SAACLaptop942. Change it only if the label says something else.">
+        <Field label="Tag" hint="Filled in from the name without spaces, e.g. SAACLAPTOP942. Change it only if the label says something else.">
           <input
             className="input num"
             value={form.assetTag}
@@ -283,11 +283,11 @@ function BulkForm({ types, onClose }: { types: ItemTypeRow[]; onClose: () => voi
             ))}
           </select>
         </Field>
-        <Field label="Name, before the number" hint="e.g. SAAC Charger">
+        <Field label="Name, before the number" hint="e.g. SAAC LAPTOP">
           <input className="input" autoFocus value={form.namePrefix} onChange={set('namePrefix')} />
         </Field>
         <div className="grid-2" style={{ gridTemplateColumns: '1fr 1fr' }}>
-          <Field label="Starting number" hint="The number of the first one, e.g. 941">
+          <Field label="Starting number" hint="The number of the first one, e.g. 942">
             <input className="input num" inputMode="numeric" value={form.first} onChange={set('first')} />
           </Field>
           <Field label="How many" hint="e.g. 10">
