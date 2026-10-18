@@ -18,11 +18,11 @@ export function ItemPage() {
   return (
     <>
       <PageHead
-        title={h.name}
+        title={h.kind === 'book' ? h.name : h.tag}
         sub={
           <span className="row" style={{ gap: 'var(--space-2)' }}>
-            <span className="num">{h.tag}</span>
-            <span>· {h.typeName}</span>
+            {h.kind === 'book' && <span className="num">{h.tag} ·</span>}
+            <span>{h.typeName}</span>
             <ItemStatePill state={h.state} pastDue={h.pastDue} />
           </span>
         }

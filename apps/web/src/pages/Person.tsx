@@ -77,7 +77,6 @@ export function Person() {
                 <thead>
                   <tr>
                     <th>Item</th>
-                    <th>Tag</th>
                     <th>Term</th>
                     <th>Due</th>
                   </tr>
@@ -86,11 +85,8 @@ export function Person() {
                   {p.holding.map((h) => (
                     <tr key={h.id}>
                       <td>
-                        {h.label}
-                        <div className="xsmall muted">{h.typeName}</div>
-                      </td>
-                      <td className="tag">
                         <TagLink kind={h.kind} id={h.itemId} tag={h.tag} />
+                        <div className="xsmall muted">{h.kind === 'book' ? h.label : h.typeName}</div>
                       </td>
                       <td>{h.termCode}</td>
                       <td className="num">
@@ -167,7 +163,13 @@ export function Person() {
                 {t.loans.map((l) => (
                   <div key={l.id} className="row small" style={{ justifyContent: 'space-between' }}>
                     <span>
-                      {l.label} <span className="muted num">· {l.tag}</span>
+                      {l.kind === 'book' ? (
+                        <>
+                          {l.label} <span className="muted num">· {l.tag}</span>
+                        </>
+                      ) : (
+                        l.tag
+                      )}
                     </span>
                     <span className="muted num">
                       {l.outcome === 'RETURNED' ? 'Returned' : 'Not for return'} {fmtDate(l.closedAt, { month: 'short', day: 'numeric' })}

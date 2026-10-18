@@ -81,7 +81,7 @@ export class ItemsService {
     return {
       id: i.id,
       kind: 'tech',
-      tag: i.assetTag,
+      tag: i.name,
       name: i.name,
       typeName: i.type.name,
       state,

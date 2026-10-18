@@ -22,15 +22,14 @@ describe.skipIf(!hasDb)('inventory: tech items', () => {
   const items = async (q = '') => (await admin.get(`/api/items${q}`)).body as InventoryItemRow[];
   const byTag = async (tag: string) => (await items()).find((i) => i.assetTag === tag)!;
 
-  it('tags an item with its name without spaces, keeps the capitals, and refuses a taken tag in any case', async () => {
-    const res = await admin.post('/api/items').send({ typeId: laptops, name: 'SAAC Laptop 942' });
+  it('takes one tag as it reads on the label, matches it without spaces, and refuses a taken tag in any case', async () => {
+    const res = await admin.post('/api/items').send({ typeId: laptops, tag: ' SAAC  Laptop 942 ' });
     expect(res.status).toBe(201);
-    expect(res.body.assetTag).toBe('SAACLaptop942');
-    expect((await admin.post('/api/items').send({ typeId: laptops, name: 'Other', assetTag: 'saaclaptop942' })).status).toBe(409);
+    expect(res.body).toMatchObject({ name: 'SAAC Laptop 942', assetTag: 'SAACLaptop942' });
+    expect((await admin.post('/api/items').send({ typeId: laptops, tag: 'saaclaptop942' })).status).toBe(409);
+    expect((await admin.post('/api/items').send({ typeId: laptops, tag: 'SAAC #1' })).status).toBe(400);
     expect((await byTag('SAACLaptop942')).state).toBe('AVAILABLE');
-    // A different label can still be typed by hand.
-    const own = await admin.post('/api/items').send({ typeId: laptops, name: 'Old Loaner', assetTag: 'LOANER 7' });
-    expect(own.body.assetTag).toBe('LOANER7');
+    expect((await items('?q=SAACLaptop942')).length).toBe(1);
   });
 
   it('adds a numbered run all at once, or none if a tag is taken', async () => {
@@ -83,7 +82,7 @@ describe.skipIf(!hasDb)('inventory: tech items', () => {
   it('there is no delete, and staff cannot change inventory', async () => {
     const id = (await byTag('SAACLaptop942')).id;
     expect((await admin.agent.delete(`/api/items/${id}`).set('x-saac-request', '1')).status).toBe(404);
-    expect((await desk.post('/api/items').send({ typeId: laptops, name: 'X', assetTag: 'X-1' })).status).toBe(403);
+    expect((await desk.post('/api/items').send({ typeId: laptops, tag: 'X-1' })).status).toBe(403);
     expect((await desk.post(`/api/items/${id}/status`).send({ status: 'SURPLUS', note: 'x' })).status).toBe(403);
     expect((await desk.get('/api/items')).status).toBe(403);
     // Staff still find items through the search on Home.
@@ -92,7 +91,7 @@ describe.skipIf(!hasDb)('inventory: tech items', () => {
 
   it('lists types with their item counts, and filters by state', async () => {
     const types = (await admin.get('/api/item-types')).body as ItemTypeRow[];
-    expect(types).toEqual([{ id: laptops, name: 'Laptops', itemCount: 5 }]);
+    expect(types).toEqual([{ id: laptops, name: 'Laptops', itemCount: 4 }]);
     expect((await items('?state=OUT')).map((i) => i.assetTag)).toEqual(['SAACLaptop2']);
     expect((await admin.post('/api/item-types').send({ name: 'laptops' })).status).toBe(409);
   });

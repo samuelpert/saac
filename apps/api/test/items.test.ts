@@ -34,8 +34,8 @@ describe.skipIf(!hasDb)('item lookup and history', () => {
   it('finds tech by name words or by tag, and says who has it', async () => {
     const [hit, ...rest] = await lookup('laptop 942');
     expect(rest).toEqual([]);
-    expect(hit).toMatchObject({ kind: 'tech', tag: 'L-0942', state: 'OUT', pastDue: true, holder: { pid: '9500002', lastName: 'Holder' } });
-    expect((await lookup('l-0942'))[0]?.tag).toBe('L-0942');
+    expect(hit).toMatchObject({ kind: 'tech', tag: 'SAAC Laptop 942', state: 'OUT', pastDue: true, holder: { pid: '9500002', lastName: 'Holder' } });
+    expect((await lookup('l-0942'))[0]?.tag).toBe('SAAC Laptop 942');
   });
 
   it('derives the state: in repair, retired, available', async () => {

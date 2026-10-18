@@ -99,7 +99,7 @@ export class LoansService {
       itemId: l.itemId,
       borrower: borrowerRef(l.borrower),
       label: l.item.name,
-      tag: l.item.assetTag,
+      tag: l.item.name,
       typeName: l.item.type.name,
       checkedOutAt: l.checkedOutAt.toISOString(),
       dueDate: l.dueDate.toISOString(),

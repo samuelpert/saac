@@ -117,7 +117,6 @@ function LoanTable({ rows, showKind }: { rows: LoanListRow[]; showKind: boolean 
             <th>Team</th>
             {showKind && <th>Kind</th>}
             <th>Item</th>
-            <th>Tag</th>
             <th>Due</th>
           </tr>
         </thead>
@@ -130,9 +129,9 @@ function LoanTable({ rows, showKind }: { rows: LoanListRow[]; showKind: boolean 
               <td className="pid">{r.borrower.pid}</td>
               <td>{r.borrower.team ?? <span className="muted">—</span>}</td>
               {showKind && <td>{r.kind === 'book' ? 'Book' : r.typeName}</td>}
-              <td>{r.label}</td>
-              <td className="tag">
+              <td>
                 <TagLink kind={r.kind} id={r.itemId} tag={r.tag} />
+                {r.kind === 'book' && <div className="small">{r.label}</div>}
               </td>
               <td className="num">
                 {r.pastDue ? (

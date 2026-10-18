@@ -6,7 +6,6 @@ import {
   bulkItems,
   itemBulkInputSchema,
   itemInputSchema,
-  tagFromName,
   type BookListResponse,
   type InventoryItemRow,
   type ItemState,
@@ -76,7 +75,7 @@ function TechTab() {
       <div className="row">
         <div className="search-input">
           <Search size={16} strokeWidth={1.75} aria-hidden="true" />
-          <input className="input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name or tag" aria-label="Search tech" />
+          <input className="input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by tag, e.g. SAAC LAPTOP 942" aria-label="Search tech" />
         </div>
         <select className="select" aria-label="Type" value={typeId} onChange={(e) => setTypeId(e.target.value)}>
           <option value="">Every type</option>
@@ -117,7 +116,6 @@ function TechTab() {
             <thead>
               <tr>
                 <th>Tag</th>
-                <th>Name</th>
                 <th>Type</th>
                 <th>State</th>
                 <th>With</th>
@@ -129,9 +127,8 @@ function TechTab() {
               {rows.map((i) => (
                 <tr key={i.id}>
                   <td className="tag">
-                    <TagLink kind="tech" id={i.id} tag={i.assetTag} />
+                    <TagLink kind="tech" id={i.id} tag={i.name} />
                   </td>
-                  <td>{i.name}</td>
                   <td>{i.typeName}</td>
                   <td>
                     <ItemStatePill state={i.state} pastDue={i.pastDue} />
@@ -196,9 +193,7 @@ function useInventoryMutation<T>(fn: (body: T) => Promise<unknown>, onClose: () 
 }
 
 function ItemForm({ types, item, onClose }: { types: ItemTypeRow[]; item?: InventoryItemRow; onClose: () => void }) {
-  const [form, setForm] = useState({ typeId: item?.typeId ?? types[0]?.id ?? '', name: item?.name ?? '', assetTag: item?.assetTag ?? '', notes: item?.notes ?? '' });
-  // The tag follows the name (without spaces) until someone types a different tag by hand.
-  const [tagEdited, setTagEdited] = useState(Boolean(item) && item!.assetTag !== tagFromName(item!.name));
+  const [form, setForm] = useState({ typeId: item?.typeId ?? types[0]?.id ?? '', tag: item?.name ?? '', notes: item?.notes ?? '' });
   const [error, setError] = useState<unknown>(null);
   const save = useInventoryMutation((body: unknown) => (item ? apiSend('PUT', `/api/items/${item.id}`, body) : apiSend('POST', '/api/items', body)), onClose);
   function submit(e: FormEvent) {
@@ -209,7 +204,7 @@ function ItemForm({ types, item, onClose }: { types: ItemTypeRow[]; item?: Inven
     save.mutate(form);
   }
   return (
-    <Dialog title={item ? `Edit ${item.assetTag}` : 'Add a tech item'} onClose={onClose}>
+    <Dialog title={item ? `Edit ${item.name}` : 'Add a tech item'} onClose={onClose}>
       <form className="stack" onSubmit={submit}>
         <Field label="Type">
           <select className="select" value={form.typeId} onChange={(e) => setForm({ ...form, typeId: e.target.value })}>
@@ -220,23 +215,8 @@ function ItemForm({ types, item, onClose }: { types: ItemTypeRow[]; item?: Inven
             ))}
           </select>
         </Field>
-        <Field label="Name" hint="e.g. SAAC LAPTOP 942">
-          <input
-            className="input"
-            autoFocus
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value, assetTag: tagEdited ? form.assetTag : tagFromName(e.target.value) })}
-          />
-        </Field>
-        <Field label="Tag" hint="Filled in from the name without spaces, e.g. SAACLAPTOP942. Change it only if the label says something else.">
-          <input
-            className="input num"
-            value={form.assetTag}
-            onChange={(e) => {
-              setTagEdited(true);
-              setForm({ ...form, assetTag: e.target.value });
-            }}
-          />
+        <Field label="Tag" hint="As it reads on the label, e.g. SAAC LAPTOP 942">
+          <input className="input" autoFocus value={form.tag} onChange={(e) => setForm({ ...form, tag: e.target.value })} />
         </Field>
         <Field label="Notes (optional)">
           <input className="input" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
@@ -264,7 +244,7 @@ function BulkForm({ types, onClose }: { types: ItemTypeRow[]; onClose: () => voi
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setForm({ ...form, [k]: e.target.value });
   return (
     <Dialog title="Add several items" onClose={onClose}>
-      <p className="secondary">For a numbered set, like ten chargers in a row. Each one is named with its number and tagged with its name without spaces.</p>
+      <p className="secondary">For a numbered set, like SAAC LAPTOP 903 to SAAC LAPTOP 958.</p>
       <form
         className="stack"
         onSubmit={(e) => {
@@ -283,21 +263,21 @@ function BulkForm({ types, onClose }: { types: ItemTypeRow[]; onClose: () => voi
             ))}
           </select>
         </Field>
-        <Field label="Name, before the number" hint="e.g. SAAC LAPTOP">
+        <Field label="Tag, before the number" hint="e.g. SAAC LAPTOP">
           <input className="input" autoFocus value={form.namePrefix} onChange={set('namePrefix')} />
         </Field>
         <div className="grid-2" style={{ gridTemplateColumns: '1fr 1fr' }}>
-          <Field label="Starting number" hint="The number of the first one, e.g. 942">
+          <Field label="Starting number" hint="The number of the first one, e.g. 903">
             <input className="input num" inputMode="numeric" value={form.first} onChange={set('first')} />
           </Field>
-          <Field label="How many" hint="e.g. 10">
+          <Field label="How many" hint="e.g. 56">
             <input className="input num" inputMode="numeric" value={form.count} onChange={set('count')} />
           </Field>
         </div>
         <p className="small secondary num" aria-live="polite">
           {preview.length > 0
-            ? `Adds ${plural(preview.length, 'item')}: ${preview[0]!.name} (tag ${preview[0]!.assetTag})${preview.length > 1 ? ` to ${preview.at(-1)!.name} (tag ${preview.at(-1)!.assetTag})` : ''}.`
-            : 'Fill in the name, the starting number and how many to see what will be added.'}
+            ? `Adds ${plural(preview.length, 'item')}: ${preview[0]!.name}${preview.length > 1 ? ` to ${preview.at(-1)!.name}` : ''}.`
+            : 'Fill in the tag, the starting number and how many to see what will be added.'}
         </p>
         <ErrorText error={error ?? save.error} />
         <div className="actions">
@@ -360,7 +340,7 @@ function StatusDialog({ item, onClose }: { item: InventoryItemRow; onClose: () =
   const [note, setNote] = useState(item.statusNote ?? '');
   const save = useInventoryMutation(() => apiSend('POST', `/api/items/${item.id}/status`, { status, note }), onClose);
   return (
-    <Dialog title={`Status of ${item.assetTag}`} onClose={onClose}>
+    <Dialog title={`Status of ${item.name}`} onClose={onClose}>
       {item.state === 'OUT' && <p className="secondary">This item is checked out. It must be checked in before it can go to repair or surplus.</p>}
       <fieldset className="stack" style={{ border: 0, padding: 0, margin: 0, gap: 0 }}>
         <legend className="visually-hidden">Status</legend>
@@ -401,7 +381,7 @@ function RetireDialog({ item, onClose }: { item: InventoryItemRow; onClose: () =
   const [note, setNote] = useState('');
   const save = useInventoryMutation(() => apiSend('POST', `/api/items/${item.id}/retire`, { note }), onClose);
   return (
-    <Dialog title={`Retire ${item.assetTag}?`} onClose={onClose}>
+    <Dialog title={`Retire ${item.name}?`} onClose={onClose}>
       <p className="secondary">Retired items are never lent again, but their history stays. You can restore one later.</p>
       <Field label="Why (optional)" hint="e.g. lost, broken beyond repair">
         <input className="input" autoFocus value={note} onChange={(e) => setNote(e.target.value)} />

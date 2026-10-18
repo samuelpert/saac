@@ -15,7 +15,7 @@ type Selected = { kind: 'person'; id: string } | { kind: 'item'; item: ItemMatch
 
 /**
  * The one search on Home. A Panther ID or a name finds a student and shows what they hold.
- * A tech tag or name ("L-0942", "laptop 942") or a book copy tag finds the item and shows
+ * A tech tag ("SAAC LAPTOP 942", "laptop 942") or a book copy tag finds the item and shows
  * who has it and its history. A barcode scanner types like a keyboard and presses Enter,
  * so Enter submits, feedback shows at once, and focus stays in the field.
  */
@@ -114,7 +114,7 @@ export function ScanBox({ term }: { term?: string }) {
           ref={ref}
           value={value}
           aria-label="Search students and items"
-          placeholder="Type a Panther ID, a name, or a tech tag or name, then press Enter"
+          placeholder="Type a Panther ID, a name, or a tech tag, then press Enter"
           autoComplete="off"
           spellCheck={false}
           onChange={(e) => setValue(e.target.value)}
@@ -149,7 +149,7 @@ export function ScanBox({ term }: { term?: string }) {
               {items.map((it) => (
                 <div key={`${it.kind}-${it.id}`} className="result-row">
                   <TagLink kind={it.kind} id={it.id} tag={it.tag} />
-                  <span className="medium">{it.name}</span>
+                  {it.kind === 'book' && <span className="medium">{it.name}</span>}
                   <span className="muted small">{it.typeName}</span>
                   <span className="spacer" />
                   <ItemStatePill state={it.state} pastDue={it.pastDue} />
@@ -206,7 +206,6 @@ function PersonPanel({ id }: { id: string }) {
               <tr>
                 <th>Holding now</th>
                 <th>Type</th>
-                <th>Tag</th>
                 <th>Term</th>
                 <th>Due</th>
               </tr>
@@ -214,11 +213,11 @@ function PersonPanel({ id }: { id: string }) {
             <tbody>
               {p.holding.map((h) => (
                 <tr key={h.id}>
-                  <td>{h.label}</td>
-                  <td>{h.kind === 'book' ? 'Book' : h.typeName}</td>
-                  <td className="tag">
+                  <td>
                     <TagLink kind={h.kind} id={h.itemId} tag={h.tag} />
+                    {h.kind === 'book' && <div className="small">{h.label}</div>}
                   </td>
+                  <td>{h.kind === 'book' ? 'Book' : h.typeName}</td>
                   <td>{h.termCode}</td>
                   <td className="num">
                     {h.pastDue ? (
@@ -247,10 +246,10 @@ function ItemPanel({ item }: { item: ItemMatch }) {
     <section className="card" aria-label="Item">
       <div className="card-head">
         <div className="stack" style={{ gap: 2 }}>
-          <h2>{item.name}</h2>
+          <h2>{item.kind === 'book' ? item.name : item.tag}</h2>
           <span className="row small secondary" style={{ gap: 'var(--space-2)' }}>
-            <span className="num">{item.tag}</span>
-            <span>· {item.typeName}</span>
+            {item.kind === 'book' && <span className="num">{item.tag} ·</span>}
+            <span>{item.typeName}</span>
             <ItemStatePill state={item.state} pastDue={item.pastDue} />
           </span>
         </div>
