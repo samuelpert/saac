@@ -198,4 +198,6 @@ export interface ItemLoanHistoryRow {
 export interface ItemHistory extends ItemMatch {
   statusNote: string | null;
   loans: ItemLoanHistoryRow[];
+  /** Status changes, retirements and edits from the audit log, newest first. */
+  events: { at: string; user: string; action: string; note: string | null }[];
 }

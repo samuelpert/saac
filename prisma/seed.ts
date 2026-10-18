@@ -98,7 +98,8 @@ async function main() {
 
   // ---- Tech inventory ----------------------------------------------------------
   const types = Object.fromEntries(
-    await Promise.all(['Laptops', 'Chargers', 'Other tech'].map(async (name) => [name, (await db.itemType.create({ data: { name } })).id] as const)),
+    // The inventory migration already adds these types; upsert so the seed works either way.
+    await Promise.all(['Laptops', 'Chargers', 'Other tech'].map(async (name) => [name, (await db.itemType.upsert({ where: { name }, update: {}, create: { name } })).id] as const)),
   );
   const items: { id: string; typeName: string; status: 'IN_SERVICE' | 'IN_REPAIR' | 'SURPLUS'; retired: boolean }[] = [];
   const itemRows = [];

@@ -6,7 +6,7 @@ import { ItemStatePill } from '../components/ItemBits';
 import { PersonName } from '../components/PersonCard';
 import { HistoryTable } from '../components/ScanBox';
 import { EmptyState, ErrorText, Loading, PageHead } from '../components/ui';
-import { fmtDate } from '../lib/format';
+import { fmtDate, fmtDateTime } from '../lib/format';
 
 /** Item history: who has it now, then every earlier checkout and check-in. Opened from any tag. */
 export function ItemPage() {
@@ -41,9 +41,36 @@ export function ItemPage() {
         {h.statusNote && <p className="small secondary">Note: {h.statusNote}</p>}
       </section>
       <section className="card">
-        <h2>History</h2>
+        <h2>Checkouts</h2>
         {h.loans.length === 0 ? <EmptyState>Never checked out.</EmptyState> : <HistoryTable loans={h.loans} />}
       </section>
+      {h.events.length > 0 && (
+        <section className="card">
+          <h2>Status changes</h2>
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>When</th>
+                  <th>What</th>
+                  <th>Note</th>
+                  <th>By</th>
+                </tr>
+              </thead>
+              <tbody>
+                {h.events.map((e, i) => (
+                  <tr key={`${e.at}-${i}`}>
+                    <td className="num">{fmtDateTime(e.at)}</td>
+                    <td>{e.action}</td>
+                    <td className="small secondary">{e.note ?? ''}</td>
+                    <td>{e.user}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
     </>
   );
 }

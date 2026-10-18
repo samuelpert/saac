@@ -6,7 +6,9 @@ import { Loading } from './components/ui';
 import { AuditLog, Backups, Terms, Users } from './pages/Admin';
 import { CheckedOut } from './pages/CheckedOut';
 import { Home } from './pages/Home';
+import { BookNew, BookTitle } from './pages/Books';
 import { ImportDetail, Imports } from './pages/Imports';
+import { Inventory } from './pages/Inventory';
 import { ImportStudents } from './pages/ImportStudents';
 import { ItemPage } from './pages/ItemPage';
 import { ChangePassword, Login } from './pages/Login';
@@ -43,7 +45,9 @@ export function App() {
         <Route path="admin/imports" element={<AdminOnly><Imports /></AdminOnly>} />
         <Route path="admin/imports/students" element={<AdminOnly><ImportStudents /></AdminOnly>} />
         <Route path="admin/imports/:id" element={<AdminOnly><ImportDetail /></AdminOnly>} />
-        <Route path="admin/inventory" element={<AdminOnly><Placeholder title="Inventory" phase={2} what="Tech items, book titles and book copies." /></AdminOnly>} />
+        <Route path="admin/inventory" element={<AdminOnly><Inventory /></AdminOnly>} />
+        <Route path="admin/inventory/books/new" element={<AdminOnly><BookNew /></AdminOnly>} />
+        <Route path="admin/inventory/books/:id" element={<AdminOnly><BookTitle /></AdminOnly>} />
         <Route path="admin/terms" element={<AdminOnly><Terms /></AdminOnly>} />
         <Route path="admin/users" element={<AdminOnly><Users /></AdminOnly>} />
         <Route path="admin/audit" element={<AdminOnly><AuditLog /></AdminOnly>} />

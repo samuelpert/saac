@@ -5,6 +5,27 @@ import { notFound } from '../http/errors';
 
 const LOOKUP_LIMIT = 10;
 
+const STATE_WORD: Record<string, string> = { IN_SERVICE: 'In service', IN_REPAIR: 'In repair', SURPLUS: 'Surplus' };
+
+/** Audit actions shown in an item's history, in words. */
+const EVENT_LABEL: Record<string, (after: Record<string, unknown>) => string> = {
+  'item.create': () => 'Added to inventory',
+  'item.update': () => 'Details edited',
+  'item.status': (a) => `Set to ${STATE_WORD[String(a.status)] ?? String(a.status)}`,
+  'item.retire': () => 'Retired',
+  'item.restore': () => 'Restored from retired',
+  'copy.create': () => 'Added to inventory',
+  'copy.update': () => 'Condition or notes edited',
+  'copy.retire': () => 'Retired',
+  'copy.restore': () => 'Restored from retired',
+};
+
+/** "Maria Alvarez" becomes "M. Alvarez". */
+const shortName = (name: string) => {
+  const parts = name.trim().split(/\s+/);
+  return parts.length < 2 ? name : `${parts[0]![0]}. ${parts.at(-1)}`;
+};
+
 const personSelect = { id: true, pid: true, firstName: true, lastName: true, team: { select: { name: true } } } as const;
 type PersonRow = { id: string; pid: string; firstName: string; lastName: string; team: { name: string } | null };
 const personRef = (b: PersonRow) => ({
@@ -89,6 +110,23 @@ export class ItemsService {
     };
   }
 
+  /** Status changes, retirements and edits, from the audit log, newest first. */
+  private async events(entityType: 'Item' | 'BookCopy', id: string): Promise<ItemHistory['events']> {
+    const rows = await this.db.auditLog.findMany({
+      where: { entityType, entityId: id },
+      include: { user: { select: { name: true } } },
+      orderBy: { at: 'desc' },
+      take: 100,
+    });
+    return rows
+      .filter((r) => EVENT_LABEL[r.action])
+      .map((r) => {
+        const after = (r.after ?? {}) as Record<string, unknown>;
+        const note = typeof after.statusNote === 'string' ? after.statusNote : typeof after.note === 'string' ? after.note : null;
+        return { at: r.at.toISOString(), user: r.user ? shortName(r.user.name) : 'System', action: EVENT_LABEL[r.action]!(after), note: r.action === 'item.status' || r.action.endsWith('.retire') ? note : null };
+      });
+  }
+
   /** Who has it now, and every earlier checkout and check-in, newest first. */
   async history(kind: 'tech' | 'book', id: string, now = new Date()): Promise<ItemHistory> {
     const loanInclude = { borrower: { select: personSelect }, semester: { select: { code: true } } } as const;
@@ -103,6 +141,7 @@ export class ItemsService {
         ...this.techMatch(i, now),
         statusNote: i.statusNote,
         loans: loans.map((l) => this.historyRow(l, l.conditionOut)),
+        events: await this.events('Item', id),
       };
     }
     const c = await this.db.bookCopy.findUnique({
@@ -111,7 +150,7 @@ export class ItemsService {
     });
     if (!c) throw notFound('No such copy');
     const loans = await this.db.bookLoan.findMany({ where: { copyId: id }, include: loanInclude, orderBy: { checkedOutAt: 'desc' } });
-    return { ...this.copyMatch(c, now), statusNote: c.notes, loans: loans.map((l) => this.historyRow(l, null)) };
+    return { ...this.copyMatch(c, now), statusNote: c.notes, loans: loans.map((l) => this.historyRow(l, null)), events: await this.events('BookCopy', id) };
   }
 
   private historyRow(

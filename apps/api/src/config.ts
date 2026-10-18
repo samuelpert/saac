@@ -10,6 +10,11 @@ const envSchema = z.object({
     .transform((v) => v === 'true'),
   BACKUP_STALE_HOURS: z.coerce.number().positive().default(30),
   BACKUP_DIR: z.string().default('./backups'),
+  // The only call the app makes outside the host: filling in a book title from its ISBN.
+  OPEN_LIBRARY_LOOKUP: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((v) => v === 'true'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 });
 

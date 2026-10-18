@@ -374,3 +374,11 @@ model AuditLog {
   @@index([entityType, entityId])
   @@index([at])
 }
+
+// Open Library answers, kept so a title looked up once fills in again with no network.
+model IsbnLookup {
+  isbn      String   @id
+  found     Boolean
+  data      Json?
+  fetchedAt DateTime @default(now())
+}

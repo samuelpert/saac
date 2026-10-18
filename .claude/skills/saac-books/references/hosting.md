@@ -9,7 +9,7 @@ The database and the app live on one always-on Windows computer, with no cloud. 
 - Machine: a Windows version that still gets security updates (Windows 11 preferred). For about 3,000 people, 8 GB of RAM and 50 GB of free disk is plenty. Prefer a wired network connection.
 - PostgreSQL: the official Windows installer from postgresql.org, current supported major version. It listens on `localhost` only. The app uses its own database user with a strong password, separate from the admin password.
 - App: build once. One Node process serves the API and the built frontend on one port, so there is one thing to start and one address to open.
-- Config: a `.env` file readable only by the account that runs the app. Never in git.
+- Config: a `.env` file readable only by the account that runs the app. Never in git. `OPEN_LIBRARY_LOOKUP=false` turns off the one outside call the app makes (filling in a book title from its ISBN).
 - Start at boot, without anyone logging in: a Windows service or a Task Scheduler task set to "Run whether user is logged on or not" with restart on failure. Pick one in phase 0 and write the steps in `docs/runbook.md`.
 - Native install, not Docker. There is no virtualization to configure and fewer moving parts for someone who is not a developer to maintain.
 - Time zone America/New_York with time sync on.

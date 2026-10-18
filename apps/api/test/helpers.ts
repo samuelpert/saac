@@ -4,19 +4,24 @@ import { createApp } from '../src/app';
 import { createDb, type Db } from '../src/db';
 import { createServices, type Services } from '../src/services';
 import { hashPassword } from '../src/services/auth.service';
+import type { Fetcher } from '../src/services/books.service';
 
 export const testDatabaseUrl = inject('testDatabaseUrl');
 export const hasDb = testDatabaseUrl !== null;
 
 export const PASSWORD = 'test-password-123';
 
-export function setupApp(overrides: { SESSION_IDLE_MINUTES?: number; BACKUP_STALE_HOURS?: number } = {}) {
+export function setupApp(overrides: { SESSION_IDLE_MINUTES?: number; BACKUP_STALE_HOURS?: number; fetcher?: Fetcher } = {}) {
   const db = createDb(testDatabaseUrl!);
-  const services = createServices(db, {
-    SESSION_IDLE_MINUTES: overrides.SESSION_IDLE_MINUTES ?? 15,
-    BACKUP_STALE_HOURS: overrides.BACKUP_STALE_HOURS ?? 30,
-    BACKUP_DIR: '.',
-  });
+  // Tests never reach the network: Open Library answers come from the fetcher a test passes, or fail as offline.
+  const offline: Fetcher = async () => {
+    throw new Error('offline in tests');
+  };
+  const services = createServices(
+    db,
+    { SESSION_IDLE_MINUTES: overrides.SESSION_IDLE_MINUTES ?? 15, BACKUP_STALE_HOURS: overrides.BACKUP_STALE_HOURS ?? 30, BACKUP_DIR: '.' },
+    { fetcher: overrides.fetcher ?? offline },
+  );
   const app = createApp(services, { cookieSecure: false, idleMinutes: overrides.SESSION_IDLE_MINUTES ?? 15 });
   return { db, services, app };
 }

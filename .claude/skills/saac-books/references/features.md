@@ -215,7 +215,7 @@ The user is designing this. Until it is settled, build only the generic scan fie
 
 - [ ] Phase 0: scaffold and host. Done: monorepo, schema and migrations, login and roles, idle sign-out, audit log, backup script, runbook draft. Open: Windows service and reboot test, HTTPS between computers, backup scheduling on the host, restore guide tested by someone else
 - [x] Phase 1: admin dashboard and people. Done October 2026: dashboard reviewed by the user, every phase 1 acceptance check passes. Added on request: term tags and eligibility, staff active switch, per-team scholarship workbook import, person card, item lookup and item history page
-- [ ] Phase 2: inventory
+- [x] Phase 2: inventory. Done October 2026 (labels wait for the barcode step): Inventory screen with Tech and Books tabs, admin only. Tech items are added one at a time or as a numbered run, edited, set in repair or surplus with a note, retired and restored, never deleted; an item that is out cannot change status or be retired until it is checked in. Book titles are added by hand or by ISBN lookup on Open Library (cached, offline falls back to typing); copies are added in bulk with numbered tags (C-00001...) or one with an existing label, edited, retired and restored. Item history shows status changes from the audit log
 - [ ] Phase 3: term books and needs
 - [ ] Phase 4: lend and return
 - [ ] Phase 5: lookups and reports
