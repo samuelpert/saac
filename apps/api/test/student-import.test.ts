@@ -157,7 +157,7 @@ describe.skipIf(!hasDb)('student import', () => {
     expect(people.every((b) => b.onScholarship)).toBe(true);
     const teamOf = (last: string) => people.find((b) => b.lastName === last)?.team?.name;
     expect(teamOf('Kickman')).toBe('Mens Soccer');
-    expect(teamOf('Sandy')).toBe('Sand Volleyball');
+    expect(teamOf('Sandy')).toBe('Beach Volleyball');
     expect(teamOf('Laps')).toBe('Swimming');
     expect(teamOf('Sprint')).toBe('Womens Track and Field');
     expect(teamOf('Gamer')).toBeUndefined();

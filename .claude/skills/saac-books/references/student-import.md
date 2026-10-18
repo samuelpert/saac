@@ -31,11 +31,11 @@ Never store a blank over an existing value. A blank in the file means "no inform
 
 ## 3. Sport column mapping
 
-The real file mixes teams, roles, and a status in one column. Keep the mapping in an admin-editable table (`GroupMapping`), seeded with these defaults (matching ignores case, spaces and punctuation; migration `sport_aliases` adds the workbook names such as `Men's Track/Field`, `Swimming/Diving`, `Beach Volleyball` → Sand Volleyball, and tab names like `M.Soccer`), so a new value in a future file goes to review instead of breaking the import.
+The real file mixes teams, roles, and a status in one column. Keep the mapping in an admin-editable table (`GroupMapping`), seeded with these defaults (matching ignores case, spaces and punctuation; migration `sport_aliases` adds the workbook names such as `Men's Track/Field`, `Swimming/Diving`, `Beach Volleyball` (migration `beach_volleyball` renamed the team Sand Volleyball to Beach Volleyball; both names in a file map to it), and tab names like `M.Soccer`), so a new value in a future file goes to review instead of breaking the import.
 
 | Source value | Becomes |
 | --- | --- |
-| Baseball, Cheerleader, Dazzler, Football, Golf, Mens Basketball, Mens Soccer, Mens Track and Field, Sand Volleyball, Softball, Swimming, Tennis, Volleyball, Womens Basketball, Womens Soccer, Womens Track and Field | kind `ATHLETE`, team of the same name |
+| Baseball, Cheerleader, Dazzler, Football, Golf, Mens Basketball, Mens Soccer, Mens Track and Field, Sand Volleyball (team named Beach Volleyball), Softball, Swimming, Tennis, Volleyball, Womens Basketball, Womens Soccer, Womens Track and Field | kind `ATHLETE`, team of the same name |
 | Staff, Staff (tutor) | kind `STAFF`, no team |
 | Graduate Assistant, GA | kind `GRAD_ASSISTANT`, no team |
 | 5th Year | kind `ATHLETE`, team unknown, goes to review so staff pick the team |
