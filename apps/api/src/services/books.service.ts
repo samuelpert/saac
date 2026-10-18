@@ -188,7 +188,7 @@ export class BooksService {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('saac:copy-tags'))`;
       let tags: string[];
       if (input.copyTag) {
-        if (await tx.bookCopy.findUnique({ where: { copyTag: input.copyTag } })) throw conflict(`Tag ${input.copyTag} is already on another copy`);
+        if (await tx.bookCopy.findFirst({ where: { copyTag: { equals: input.copyTag, mode: 'insensitive' } } })) throw conflict(`Tag ${input.copyTag} is already on another copy`);
         tags = [input.copyTag];
       } else {
         const first = await this.nextCopyNumber(tx);

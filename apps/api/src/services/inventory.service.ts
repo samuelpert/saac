@@ -97,6 +97,12 @@ export class InventoryService {
     return query.state ? rows.filter((r) => r.state === query.state) : rows;
   }
 
+  /** Tags match ignoring case: SAACLaptop942 and saaclaptop942 are the same label. */
+  private async tagTaken(assetTag: string, exceptId?: string) {
+    const found = await this.db.item.findFirst({ where: { assetTag: { equals: assetTag, mode: 'insensitive' }, ...(exceptId ? { NOT: { id: exceptId } } : {}) } });
+    return Boolean(found);
+  }
+
   private async checkType(typeId: string) {
     if (!(await this.db.itemType.findUnique({ where: { id: typeId } }))) throw badRequest('No such type');
   }
@@ -104,7 +110,7 @@ export class InventoryService {
   async create(actorId: string, raw: unknown): Promise<Item> {
     const input = itemInputSchema.parse(raw);
     await this.checkType(input.typeId);
-    if (await this.db.item.findUnique({ where: { assetTag: input.assetTag } })) throw conflict(`Tag ${input.assetTag} is already on another item`);
+    if (await this.tagTaken(input.assetTag)) throw conflict(`Tag ${input.assetTag} is already on another item`);
     return this.db.$transaction(async (tx) => {
       const item = await tx.item.create({ data: { ...input, notes: input.notes ?? null } });
       await audit(tx, { userId: actorId, action: 'item.create', entityType: 'Item', entityId: item.id, after: snapshot(item) });
@@ -117,10 +123,10 @@ export class InventoryService {
     const input = itemBulkInputSchema.parse(raw);
     await this.checkType(input.typeId);
     const planned = bulkItems(input);
-    const taken = await this.db.item.findMany({ where: { assetTag: { in: planned.map((p) => p.assetTag) } }, select: { assetTag: true } });
+    const taken = await this.db.item.findMany({ where: { OR: planned.map((p) => ({ assetTag: { equals: p.assetTag, mode: 'insensitive' as const } })) }, select: { assetTag: true } });
     if (taken.length > 0) {
       const list = taken.map((t) => t.assetTag).slice(0, 5).join(', ');
-      throw conflict(`${taken.length === 1 ? 'Tag' : 'Tags'} ${list}${taken.length > 5 ? ' and more' : ''} already on other items. Pick another first number or prefix.`);
+      throw conflict(`${taken.length === 1 ? 'Tag' : 'Tags'} ${list}${taken.length > 5 ? ' and more' : ''} already on other items. Pick another starting number or name.`);
     }
     return this.db.$transaction(async (tx) => {
       const ids = planned.map(() => randomUUID());
@@ -139,7 +145,7 @@ export class InventoryService {
     return this.db.$transaction(async (tx) => {
       const before = await tx.item.findUnique({ where: { id } });
       if (!before) throw notFound('No such item');
-      if (input.assetTag !== before.assetTag && (await tx.item.findUnique({ where: { assetTag: input.assetTag } }))) {
+      if (await this.tagTaken(input.assetTag, id)) {
         throw conflict(`Tag ${input.assetTag} is already on another item`);
       }
       const after = await tx.item.update({ where: { id }, data: { ...input, notes: input.notes ?? null } });

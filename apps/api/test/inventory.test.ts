@@ -22,75 +22,78 @@ describe.skipIf(!hasDb)('inventory: tech items', () => {
   const items = async (q = '') => (await admin.get(`/api/items${q}`)).body as InventoryItemRow[];
   const byTag = async (tag: string) => (await items()).find((i) => i.assetTag === tag)!;
 
-  it('creates an item with a clean tag and refuses a taken tag', async () => {
-    const res = await admin.post('/api/items').send({ typeId: laptops, name: 'SAAC Laptop 942', assetTag: '  l-0942 ' });
+  it('tags an item with its name without spaces, keeps the capitals, and refuses a taken tag in any case', async () => {
+    const res = await admin.post('/api/items').send({ typeId: laptops, name: 'SAAC Laptop 942' });
     expect(res.status).toBe(201);
-    expect(res.body.assetTag).toBe('L-0942');
-    const again = await admin.post('/api/items').send({ typeId: laptops, name: 'Other', assetTag: 'L-0942' });
-    expect(again.status).toBe(409);
-    expect((await byTag('L-0942')).state).toBe('AVAILABLE');
+    expect(res.body.assetTag).toBe('SAACLaptop942');
+    expect((await admin.post('/api/items').send({ typeId: laptops, name: 'Other', assetTag: 'saaclaptop942' })).status).toBe(409);
+    expect((await byTag('SAACLaptop942')).state).toBe('AVAILABLE');
+    // A different label can still be typed by hand.
+    const own = await admin.post('/api/items').send({ typeId: laptops, name: 'Old Loaner', assetTag: 'LOANER 7' });
+    expect(own.body.assetTag).toBe('LOANER7');
   });
 
   it('adds a numbered run all at once, or none if a tag is taken', async () => {
-    const res = await admin.post('/api/items/bulk').send({ typeId: laptops, namePrefix: 'SAAC Laptop', tagPrefix: 'L-', first: 940, count: 5, digits: 4 });
-    expect(res.status).toBe(409); // L-0942 already exists
+    const res = await admin.post('/api/items/bulk').send({ typeId: laptops, namePrefix: 'SAAC Laptop', first: 940, count: 5 });
+    expect(res.status).toBe(409); // SAACLaptop942 already exists
     expect((await items('?q=SAAC')).length).toBe(1);
-    const ok = await admin.post('/api/items/bulk').send({ typeId: laptops, namePrefix: 'SAAC Laptop', tagPrefix: 'L-', first: 1, count: 3, digits: 4 });
+    const ok = await admin.post('/api/items/bulk').send({ typeId: laptops, namePrefix: 'SAAC Laptop', first: 1, count: 3 });
     expect(ok.body).toEqual({ created: 3 });
-    expect((await items('?q=L-000')).map((i) => [i.assetTag, i.name])).toEqual([
-      ['L-0001', 'SAAC Laptop 1'],
-      ['L-0002', 'SAAC Laptop 2'],
-      ['L-0003', 'SAAC Laptop 3'],
+    expect((await items('?q=SAAC Laptop')).map((i) => [i.assetTag, i.name]).sort()).toEqual([
+      ['SAACLaptop1', 'SAAC Laptop 1'],
+      ['SAACLaptop2', 'SAAC Laptop 2'],
+      ['SAACLaptop3', 'SAAC Laptop 3'],
+      ['SAACLaptop942', 'SAAC Laptop 942'],
     ]);
   });
 
   it('sets in repair or surplus with a note, and back in service', async () => {
-    const id = (await byTag('L-0001')).id;
+    const id = (await byTag('SAACLaptop1')).id;
     expect((await admin.post(`/api/items/${id}/status`).send({ status: 'IN_REPAIR' })).status).toBe(400); // a note is required
     await admin.post(`/api/items/${id}/status`).send({ status: 'IN_REPAIR', note: 'Broken screen' });
-    expect(await byTag('L-0001')).toMatchObject({ state: 'IN_REPAIR', statusNote: 'Broken screen' });
+    expect(await byTag('SAACLaptop1')).toMatchObject({ state: 'IN_REPAIR', statusNote: 'Broken screen' });
     await admin.post(`/api/items/${id}/status`).send({ status: 'IN_SERVICE' });
-    expect(await byTag('L-0001')).toMatchObject({ state: 'AVAILABLE', statusNote: null });
+    expect(await byTag('SAACLaptop1')).toMatchObject({ state: 'AVAILABLE', statusNote: null });
   });
 
   it('will not change the status of, or retire, an item that is checked out', async () => {
     const term = await t.db.semester.create({ data: { code: 'FALL26', startsOn: new Date(), endsOn: new Date(Date.now() + 9e9), returnDeadline: new Date(Date.now() + 9e9), isCurrent: true } });
     const who = await t.db.borrower.create({ data: { pid: '9600001', firstName: 'Fake', lastName: 'Borrower' } });
-    const id = (await byTag('L-0002')).id;
+    const id = (await byTag('SAACLaptop2')).id;
     await t.db.itemLoan.create({ data: { borrowerId: who.id, itemId: id, semesterId: term.id, dueDate: new Date(Date.now() + 9e9) } });
     const status = await admin.post(`/api/items/${id}/status`).send({ status: 'SURPLUS', note: 'Old' });
     expect(status.status).toBe(409);
     expect(status.body.message).toContain('Fake Borrower (9600001)');
     expect((await admin.post(`/api/items/${id}/retire`).send({})).status).toBe(409);
-    expect((await byTag('L-0002')).state).toBe('OUT');
+    expect((await byTag('SAACLaptop2')).state).toBe('OUT');
   });
 
   it('retires without deleting, keeps the history, and can restore', async () => {
-    const id = (await byTag('L-0003')).id;
+    const id = (await byTag('SAACLaptop3')).id;
     await admin.post(`/api/items/${id}/retire`).send({ note: 'Lost' });
-    expect((await byTag('L-0003')).state).toBe('RETIRED');
+    expect((await byTag('SAACLaptop3')).state).toBe('RETIRED');
     expect(await t.db.item.count({ where: { id } })).toBe(1);
     await admin.post(`/api/items/${id}/restore`).send({});
-    expect((await byTag('L-0003')).state).toBe('AVAILABLE');
+    expect((await byTag('SAACLaptop3')).state).toBe('AVAILABLE');
     const h = (await desk.get(`/api/items/tech/${id}`)).body as ItemHistory;
     expect(h.events.map((e) => e.action)).toEqual(['Restored from retired', 'Retired', 'Added to inventory']);
     expect(h.events[1]?.note).toBe('Lost');
   });
 
   it('there is no delete, and staff cannot change inventory', async () => {
-    const id = (await byTag('L-0942')).id;
+    const id = (await byTag('SAACLaptop942')).id;
     expect((await admin.agent.delete(`/api/items/${id}`).set('x-saac-request', '1')).status).toBe(404);
     expect((await desk.post('/api/items').send({ typeId: laptops, name: 'X', assetTag: 'X-1' })).status).toBe(403);
     expect((await desk.post(`/api/items/${id}/status`).send({ status: 'SURPLUS', note: 'x' })).status).toBe(403);
     expect((await desk.get('/api/items')).status).toBe(403);
     // Staff still find items through the search on Home.
-    expect((await desk.get('/api/items/lookup?q=L-0942')).body).toHaveLength(1);
+    expect((await desk.get('/api/items/lookup?q=saaclaptop942')).body).toHaveLength(1);
   });
 
   it('lists types with their item counts, and filters by state', async () => {
     const types = (await admin.get('/api/item-types')).body as ItemTypeRow[];
-    expect(types).toEqual([{ id: laptops, name: 'Laptops', itemCount: 4 }]);
-    expect((await items('?state=OUT')).map((i) => i.assetTag)).toEqual(['L-0002']);
+    expect(types).toEqual([{ id: laptops, name: 'Laptops', itemCount: 5 }]);
+    expect((await items('?state=OUT')).map((i) => i.assetTag)).toEqual(['SAACLaptop2']);
     expect((await admin.post('/api/item-types').send({ name: 'laptops' })).status).toBe(409);
   });
 });
@@ -147,7 +150,7 @@ describe.skipIf(!hasDb)('inventory: book titles and copies', () => {
     const added = await admin.post(`/api/books/${id}/copies`).send({ count: 3, condition: 'New' });
     expect(added.body).toEqual({ created: 3, tags: ['C-00001', 'C-00002', 'C-00003'] });
     const more = await admin.post(`/api/books/${id}/copies`).send({ count: 1, copyTag: 'old-label 7' });
-    expect(more.body.tags).toEqual(['OLD-LABEL 7']);
+    expect(more.body.tags).toEqual(['old-label7']);
     const next = await admin.post(`/api/books/${id}/copies`).send({ count: 1 });
     expect(next.body.tags).toEqual(['C-00004']);
     const d = (await admin.get(`/api/books/${id}`)).body as BookDetail;

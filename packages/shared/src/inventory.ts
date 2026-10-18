@@ -1,12 +1,17 @@
 import { z } from 'zod';
 import type { ItemState, PersonRef } from './dashboard';
 
-/** Tags are typed by hand until the barcode step decides their format. Case and extra spaces do not matter. */
+/**
+ * SAAC's convention: an item's tag is its name without spaces, so "SAAC Laptop 942" is "SAACLaptop942".
+ * Capitals are kept as typed; matching a tag ignores case.
+ */
+export const tagFromName = (name: string) => name.replace(/\s+/g, '');
+
 export const tagSchema = z
   .string()
   .trim()
-  .transform((v) => v.replace(/\s+/g, ' ').toUpperCase())
-  .pipe(z.string().min(1, 'Enter a tag').max(32, 'A tag has at most 32 characters').regex(/^[A-Z0-9][A-Z0-9 ._/-]*$/, 'Use letters, digits, spaces, dots, dashes or slashes'));
+  .transform((v) => v.replace(/\s+/g, ''))
+  .pipe(z.string().min(1, 'Enter a tag').max(40, 'A tag has at most 40 characters').regex(/^[A-Za-z0-9][A-Za-z0-9._/-]*$/, 'Use letters, digits, dots, dashes or slashes'));
 
 const optionalText = (max: number) =>
   z
@@ -19,30 +24,41 @@ const optionalText = (max: number) =>
 
 export const itemTypeInputSchema = z.object({ name: z.string().trim().min(1, 'Enter a name').max(60) });
 
-export const itemInputSchema = z.object({
-  typeId: z.uuid('Pick a type'),
-  name: z.string().trim().min(1, 'Enter a name').max(100),
-  assetTag: tagSchema,
-  notes: optionalText(500),
-});
+export const itemInputSchema = z
+  .object({
+    typeId: z.uuid('Pick a type'),
+    name: z.string().trim().min(1, 'Enter a name').max(100),
+    /** Left blank, it is the name without spaces. */
+    assetTag: z.string().trim().optional(),
+    notes: optionalText(500),
+  })
+  .transform((v, ctx) => {
+    const tag = tagSchema.safeParse(v.assetTag ? v.assetTag : tagFromName(v.name));
+    if (!tag.success) {
+      ctx.addIssue({ code: 'custom', message: tag.error.issues[0]?.message ?? 'Check the tag', path: ['assetTag'] });
+      return z.NEVER;
+    }
+    return { ...v, assetTag: tag.data };
+  });
 export type ItemInput = z.input<typeof itemInputSchema>;
 
-/** Add a numbered run of items, such as 40 chargers: "Charger 1".."Charger 40", tags "H-001".."H-040". */
+/**
+ * Add a numbered run of items: name "SAAC Charger", starting number 941, how many 10 gives
+ * "SAAC Charger 941" to "SAAC Charger 950", tagged "SAACCharger941" to "SAACCharger950".
+ */
 export const itemBulkInputSchema = z.object({
   typeId: z.uuid('Pick a type'),
-  namePrefix: z.string().trim().min(1, 'Enter a name').max(80),
-  tagPrefix: z.string().trim().toUpperCase().max(16).regex(/^[A-Z0-9 ._/-]*$/, 'Use letters, digits, spaces, dots, dashes or slashes'),
-  first: z.coerce.number().int().min(0).max(999_999),
-  count: z.coerce.number().int().min(1, 'Add at least one').max(200, 'Add at most 200 at a time'),
-  digits: z.coerce.number().int().min(1).max(8).default(3),
+  namePrefix: z.string().trim().min(1, 'Enter the name before the number, e.g. SAAC Charger').max(80),
+  first: z.coerce.number({ error: 'Enter the starting number' }).int('Use a whole number').min(0).max(999_999),
+  count: z.coerce.number({ error: 'Enter how many' }).int('Use a whole number').min(1, 'Add at least one').max(200, 'Add at most 200 at a time'),
 });
 export type ItemBulkInput = z.input<typeof itemBulkInputSchema>;
 
 /** The names and tags a bulk add will create. Shared so the screen can preview exactly what the server makes. */
 export function bulkItems(input: z.output<typeof itemBulkInputSchema>): { name: string; assetTag: string }[] {
   return Array.from({ length: input.count }, (_, i) => {
-    const n = input.first + i;
-    return { name: `${input.namePrefix} ${n}`, assetTag: `${input.tagPrefix}${String(n).padStart(input.digits, '0')}` };
+    const name = `${input.namePrefix} ${input.first + i}`;
+    return { name, assetTag: tagFromName(name) };
   });
 }
 

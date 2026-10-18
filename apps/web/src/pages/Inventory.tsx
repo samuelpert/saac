@@ -6,6 +6,7 @@ import {
   bulkItems,
   itemBulkInputSchema,
   itemInputSchema,
+  tagFromName,
   type BookListResponse,
   type InventoryItemRow,
   type ItemState,
@@ -75,7 +76,7 @@ function TechTab() {
       <div className="row">
         <div className="search-input">
           <Search size={16} strokeWidth={1.75} aria-hidden="true" />
-          <input className="input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by tag or name" aria-label="Search tech" />
+          <input className="input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name or tag" aria-label="Search tech" />
         </div>
         <select className="select" aria-label="Type" value={typeId} onChange={(e) => setTypeId(e.target.value)}>
           <option value="">Every type</option>
@@ -196,6 +197,8 @@ function useInventoryMutation<T>(fn: (body: T) => Promise<unknown>, onClose: () 
 
 function ItemForm({ types, item, onClose }: { types: ItemTypeRow[]; item?: InventoryItemRow; onClose: () => void }) {
   const [form, setForm] = useState({ typeId: item?.typeId ?? types[0]?.id ?? '', name: item?.name ?? '', assetTag: item?.assetTag ?? '', notes: item?.notes ?? '' });
+  // The tag follows the name (without spaces) until someone types a different tag by hand.
+  const [tagEdited, setTagEdited] = useState(Boolean(item) && item!.assetTag !== tagFromName(item!.name));
   const [error, setError] = useState<unknown>(null);
   const save = useInventoryMutation((body: unknown) => (item ? apiSend('PUT', `/api/items/${item.id}`, body) : apiSend('POST', '/api/items', body)), onClose);
   function submit(e: FormEvent) {
@@ -218,10 +221,22 @@ function ItemForm({ types, item, onClose }: { types: ItemTypeRow[]; item?: Inven
           </select>
         </Field>
         <Field label="Name" hint="e.g. SAAC Laptop 942">
-          <input className="input" autoFocus value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          <input
+            className="input"
+            autoFocus
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value, assetTag: tagEdited ? form.assetTag : tagFromName(e.target.value) })}
+          />
         </Field>
-        <Field label="Tag" hint="The number on the item's label, e.g. L-0942">
-          <input className="input num" value={form.assetTag} onChange={(e) => setForm({ ...form, assetTag: e.target.value })} />
+        <Field label="Tag" hint="Filled in from the name without spaces, e.g. SAACLaptop942. Change it only if the label says something else.">
+          <input
+            className="input num"
+            value={form.assetTag}
+            onChange={(e) => {
+              setTagEdited(true);
+              setForm({ ...form, assetTag: e.target.value });
+            }}
+          />
         </Field>
         <Field label="Notes (optional)">
           <input className="input" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
@@ -241,13 +256,15 @@ function ItemForm({ types, item, onClose }: { types: ItemTypeRow[]; item?: Inven
 }
 
 function BulkForm({ types, onClose }: { types: ItemTypeRow[]; onClose: () => void }) {
-  const [form, setForm] = useState({ typeId: types[0]?.id ?? '', namePrefix: '', tagPrefix: '', first: '1', count: '10', digits: '3' });
+  const [form, setForm] = useState({ typeId: types[0]?.id ?? '', namePrefix: '', first: '', count: '' });
   const [error, setError] = useState<unknown>(null);
   const save = useInventoryMutation((body: unknown) => apiSend('POST', '/api/items/bulk', body), onClose);
   const parsed = itemBulkInputSchema.safeParse(form);
   const preview = parsed.success ? bulkItems(parsed.data) : [];
+  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setForm({ ...form, [k]: e.target.value });
   return (
     <Dialog title="Add several items" onClose={onClose}>
+      <p className="secondary">For a numbered set, like ten chargers in a row. Each one is named with its number and tagged with its name without spaces.</p>
       <form
         className="stack"
         onSubmit={(e) => {
@@ -258,7 +275,7 @@ function BulkForm({ types, onClose }: { types: ItemTypeRow[]; onClose: () => voi
         }}
       >
         <Field label="Type">
-          <select className="select" value={form.typeId} onChange={(e) => setForm({ ...form, typeId: e.target.value })}>
+          <select className="select" value={form.typeId} onChange={set('typeId')}>
             {types.map((t) => (
               <option key={t.id} value={t.id}>
                 {t.name}
@@ -266,29 +283,22 @@ function BulkForm({ types, onClose }: { types: ItemTypeRow[]; onClose: () => voi
             ))}
           </select>
         </Field>
+        <Field label="Name, before the number" hint="e.g. SAAC Charger">
+          <input className="input" autoFocus value={form.namePrefix} onChange={set('namePrefix')} />
+        </Field>
         <div className="grid-2" style={{ gridTemplateColumns: '1fr 1fr' }}>
-          <Field label="Name" hint="e.g. SAAC Charger">
-            <input className="input" autoFocus value={form.namePrefix} onChange={(e) => setForm({ ...form, namePrefix: e.target.value })} />
+          <Field label="Starting number" hint="The number of the first one, e.g. 941">
+            <input className="input num" inputMode="numeric" value={form.first} onChange={set('first')} />
           </Field>
-          <Field label="Tag starts with" hint="e.g. H-">
-            <input className="input num" value={form.tagPrefix} onChange={(e) => setForm({ ...form, tagPrefix: e.target.value })} />
-          </Field>
-          <Field label="First number">
-            <input className="input num" inputMode="numeric" value={form.first} onChange={(e) => setForm({ ...form, first: e.target.value })} />
-          </Field>
-          <Field label="How many">
-            <input className="input num" inputMode="numeric" value={form.count} onChange={(e) => setForm({ ...form, count: e.target.value })} />
+          <Field label="How many" hint="e.g. 10">
+            <input className="input num" inputMode="numeric" value={form.count} onChange={set('count')} />
           </Field>
         </div>
-        <Field label="Digits in the tag number" hint="3 makes H-001; 4 makes H-0001">
-          <input className="input num" inputMode="numeric" value={form.digits} onChange={(e) => setForm({ ...form, digits: e.target.value })} />
-        </Field>
-        {preview.length > 0 && (
-          <p className="small secondary num">
-            Adds {plural(preview.length, 'item')}: {preview[0]!.name} ({preview[0]!.assetTag})
-            {preview.length > 1 && ` to ${preview.at(-1)!.name} (${preview.at(-1)!.assetTag})`}.
-          </p>
-        )}
+        <p className="small secondary num" aria-live="polite">
+          {preview.length > 0
+            ? `Adds ${plural(preview.length, 'item')}: ${preview[0]!.name} (tag ${preview[0]!.assetTag})${preview.length > 1 ? ` to ${preview.at(-1)!.name} (tag ${preview.at(-1)!.assetTag})` : ''}.`
+            : 'Fill in the name, the starting number and how many to see what will be added.'}
+        </p>
         <ErrorText error={error ?? save.error} />
         <div className="actions">
           <button type="button" className="btn" onClick={onClose}>
