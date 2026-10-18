@@ -22,10 +22,10 @@ describe.skipIf(!hasDb)('inventory: tech items', () => {
   const items = async (q = '') => (await admin.get(`/api/items${q}`)).body as InventoryItemRow[];
   const byTag = async (tag: string) => (await items()).find((i) => i.assetTag === tag)!;
 
-  it('takes one tag as it reads on the label, matches it without spaces, and refuses a taken tag in any case', async () => {
+  it('saves the tag without spaces as the only identifier, and refuses a taken tag in any case', async () => {
     const res = await admin.post('/api/items').send({ typeId: laptops, tag: ' SAAC  Laptop 942 ' });
     expect(res.status).toBe(201);
-    expect(res.body).toMatchObject({ name: 'SAAC Laptop 942', assetTag: 'SAACLaptop942' });
+    expect(res.body).toMatchObject({ name: 'SAACLaptop942', assetTag: 'SAACLaptop942' });
     expect((await admin.post('/api/items').send({ typeId: laptops, tag: 'saaclaptop942' })).status).toBe(409);
     expect((await admin.post('/api/items').send({ typeId: laptops, tag: 'SAAC #1' })).status).toBe(400);
     expect((await byTag('SAACLaptop942')).state).toBe('AVAILABLE');
@@ -39,10 +39,10 @@ describe.skipIf(!hasDb)('inventory: tech items', () => {
     const ok = await admin.post('/api/items/bulk').send({ typeId: laptops, namePrefix: 'SAAC Laptop', first: 1, count: 3 });
     expect(ok.body).toEqual({ created: 3 });
     expect((await items('?q=SAAC Laptop')).map((i) => [i.assetTag, i.name]).sort()).toEqual([
-      ['SAACLaptop1', 'SAAC Laptop 1'],
-      ['SAACLaptop2', 'SAAC Laptop 2'],
-      ['SAACLaptop3', 'SAAC Laptop 3'],
-      ['SAACLaptop942', 'SAAC Laptop 942'],
+      ['SAACLaptop1', 'SAACLaptop1'],
+      ['SAACLaptop2', 'SAACLaptop2'],
+      ['SAACLaptop3', 'SAACLaptop3'],
+      ['SAACLaptop942', 'SAACLaptop942'],
     ]);
   });
 

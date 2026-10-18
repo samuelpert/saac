@@ -2,7 +2,7 @@ import { z } from 'zod';
 import type { ItemState, PersonRef } from './dashboard';
 
 /**
- * SAAC's convention: an item's tag is its name without spaces, so "SAAC Laptop 942" is "SAACLaptop942".
+ * SAAC's convention: a tag has no spaces, so "SAAC LAPTOP 942" is saved as "SAACLAPTOP942".
  * Capitals are kept as typed; matching a tag ignores case.
  */
 export const tagFromName = (name: string) => name.replace(/\s+/g, '');
@@ -25,9 +25,8 @@ const optionalText = (max: number) =>
 export const itemTypeInputSchema = z.object({ name: z.string().trim().min(1, 'Enter a name').max(60) });
 
 /**
- * A tech item has one identifier, its tag, typed as it reads on the label: "SAAC LAPTOP 942".
- * It is stored as typed (`name`) and without spaces (`assetTag`), which is what a barcode holds
- * and what matching uses, so "saaclaptop942" finds the same item.
+ * A tech item has one identifier, its tag, written without spaces: "SAAC LAPTOP 942" is saved as
+ * SAACLAPTOP942. `name` and `assetTag` both hold it; matching ignores case.
  */
 export const itemInputSchema = z
   .object({
@@ -36,30 +35,29 @@ export const itemInputSchema = z
     notes: optionalText(500),
   })
   .transform((v, ctx) => {
-    const name = v.tag.replace(/\s+/g, ' ');
-    const tag = tagSchema.safeParse(tagFromName(name));
+    const tag = tagSchema.safeParse(tagFromName(v.tag));
     if (!tag.success) {
       ctx.addIssue({ code: 'custom', message: tag.error.issues[0]?.message ?? 'Check the tag', path: ['tag'] });
       return z.NEVER;
     }
-    return { typeId: v.typeId, name, assetTag: tag.data, notes: v.notes };
+    return { typeId: v.typeId, name: tag.data, assetTag: tag.data, notes: v.notes };
   });
 export type ItemInput = z.input<typeof itemInputSchema>;
 
-/** Add a numbered run of items: "SAAC LAPTOP", starting number 903, how many 56 gives SAAC LAPTOP 903 to SAAC LAPTOP 958. */
+/** Add a numbered run of items: "SAACLAPTOP", starting number 903, how many 56 gives SAACLAPTOP903 to SAACLAPTOP958. */
 export const itemBulkInputSchema = z.object({
   typeId: z.uuid('Pick a type'),
-  namePrefix: z.string().trim().min(1, 'Enter the tag before the number, e.g. SAAC LAPTOP').max(80),
+  namePrefix: z.string().trim().min(1, 'Enter the tag before the number, e.g. SAACLAPTOP').max(80),
   first: z.coerce.number({ error: 'Enter the starting number' }).int('Use a whole number').min(0).max(999_999),
   count: z.coerce.number({ error: 'Enter how many' }).int('Use a whole number').min(1, 'Add at least one').max(200, 'Add at most 200 at a time'),
 });
 export type ItemBulkInput = z.input<typeof itemBulkInputSchema>;
 
-/** The tags a bulk add will create, as typed and without spaces. Shared so the screen can preview exactly what the server makes. */
+/** The tags a bulk add will create. Shared so the screen can preview exactly what the server makes. */
 export function bulkItems(input: z.output<typeof itemBulkInputSchema>): { name: string; assetTag: string }[] {
   return Array.from({ length: input.count }, (_, i) => {
-    const name = `${input.namePrefix.replace(/\s+/g, ' ')} ${input.first + i}`;
-    return { name, assetTag: tagFromName(name) };
+    const tag = tagFromName(`${input.namePrefix}${input.first + i}`);
+    return { name: tag, assetTag: tag };
   });
 }
 

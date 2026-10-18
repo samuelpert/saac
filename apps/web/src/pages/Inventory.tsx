@@ -75,7 +75,7 @@ function TechTab() {
       <div className="row">
         <div className="search-input">
           <Search size={16} strokeWidth={1.75} aria-hidden="true" />
-          <input className="input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by tag, e.g. SAAC LAPTOP 942" aria-label="Search tech" />
+          <input className="input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by tag, e.g. SAACLAPTOP942" aria-label="Search tech" />
         </div>
         <select className="select" aria-label="Type" value={typeId} onChange={(e) => setTypeId(e.target.value)}>
           <option value="">Every type</option>
@@ -215,7 +215,7 @@ function ItemForm({ types, item, onClose }: { types: ItemTypeRow[]; item?: Inven
             ))}
           </select>
         </Field>
-        <Field label="Tag" hint="As it reads on the label, e.g. SAAC LAPTOP 942">
+        <Field label="Tag" hint="No spaces, e.g. SAACLAPTOP942. Spaces you type are removed.">
           <input className="input" autoFocus value={form.tag} onChange={(e) => setForm({ ...form, tag: e.target.value })} />
         </Field>
         <Field label="Notes (optional)">
@@ -244,7 +244,7 @@ function BulkForm({ types, onClose }: { types: ItemTypeRow[]; onClose: () => voi
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setForm({ ...form, [k]: e.target.value });
   return (
     <Dialog title="Add several items" onClose={onClose}>
-      <p className="secondary">For a numbered set, like SAAC LAPTOP 903 to SAAC LAPTOP 958.</p>
+      <p className="secondary">For a numbered set, like SAACLAPTOP903 to SAACLAPTOP958.</p>
       <form
         className="stack"
         onSubmit={(e) => {
@@ -263,7 +263,7 @@ function BulkForm({ types, onClose }: { types: ItemTypeRow[]; onClose: () => voi
             ))}
           </select>
         </Field>
-        <Field label="Tag, before the number" hint="e.g. SAAC LAPTOP">
+        <Field label="Tag, before the number" hint="e.g. SAACLAPTOP">
           <input className="input" autoFocus value={form.namePrefix} onChange={set('namePrefix')} />
         </Field>
         <div className="grid-2" style={{ gridTemplateColumns: '1fr 1fr' }}>

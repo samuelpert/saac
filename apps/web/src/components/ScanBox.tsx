@@ -15,7 +15,7 @@ type Selected = { kind: 'person'; id: string } | { kind: 'item'; item: ItemMatch
 
 /**
  * The one search on Home. A Panther ID or a name finds a student and shows what they hold.
- * A tech tag ("SAAC LAPTOP 942", "laptop 942") or a book copy tag finds the item and shows
+ * A tech tag ("SAACLAPTOP942", "laptop942") or a book copy tag finds the item and shows
  * who has it and its history. A barcode scanner types like a keyboard and presses Enter,
  * so Enter submits, feedback shows at once, and focus stays in the field.
  */

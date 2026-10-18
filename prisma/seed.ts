@@ -103,7 +103,8 @@ async function main() {
   );
   const items: { id: string; typeName: string; status: 'IN_SERVICE' | 'IN_REPAIR' | 'SURPLUS'; retired: boolean }[] = [];
   const itemRows = [];
-  const makeItems = (typeName: string, prefix: string, n: number, label: string) => {
+  // Fake tags in SAAC's style: no spaces, e.g. SAACLAPTOP1.
+  const makeItems = (typeName: string, prefix: string, n: number) => {
     for (let i = 1; i <= n; i++) {
       const status = i % 23 === 0 ? 'IN_REPAIR' : i % 41 === 0 ? 'SURPLUS' : 'IN_SERVICE';
       const retired = i % 19 === 0 && status === 'IN_SERVICE';
@@ -111,8 +112,8 @@ async function main() {
       items.push({ id, typeName, status, retired });
       itemRows.push({
         id,
-        assetTag: `${prefix}-${String(i).padStart(4, '0')}`,
-        name: `${label} ${i}`,
+        assetTag: `${prefix}${i}`,
+        name: `${prefix}${i}`,
         typeId: types[typeName]!,
         status,
         statusNote: status === 'IN_REPAIR' ? 'Cracked screen' : status === 'SURPLUS' ? 'Too old to lend' : null,
@@ -120,9 +121,9 @@ async function main() {
       } as const);
     }
   };
-  makeItems('Laptops', 'L', 84, 'Laptop');
-  makeItems('Chargers', 'H', 55, 'Charger');
-  makeItems('Other tech', 'T', 14, 'Calculator');
+  makeItems('Laptops', 'SAACLAPTOP', 84);
+  makeItems('Chargers', 'SAACCHARGER', 55);
+  makeItems('Other tech', 'SAACCALC', 14);
   await db.item.createMany({ data: itemRows });
 
   // ---- Books, classes, copies --------------------------------------------------
