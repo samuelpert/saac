@@ -115,7 +115,7 @@ model Borrower {
   email         String?
   phone         String?
   onScholarship Boolean      @default(false)
-  /// Staff and graduate assistants only: an active staff member can borrow tech. Ignored for athletes.
+  /// Staff only: an active staff member can borrow tech. Ignored for students (athletes and graduate assistants).
   staffActive   Boolean      @default(true)
   teamId        String?
   team          Team?        @relation(fields: [teamId], references: [id])

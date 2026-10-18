@@ -48,12 +48,8 @@ export function CheckedOut() {
   const tabs: [View, string][] = [
     ['open', 'Now'],
     ['pastdue', 'Past due'],
-    ...(kind === 'items'
-      ? ([
-          ['holdlist', 'Hold list'],
-          ['holds', 'Holds'],
-        ] as [View, string][])
-      : []),
+    ['holdlist', 'Hold list'],
+    ['holds', 'Holds'],
   ];
   const teamName = teams.data?.find((t) => t.id === teamId)?.name;
 
@@ -104,9 +100,9 @@ export function CheckedOut() {
 function HoldListNote({ deadline }: { deadline: string }) {
   const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
   return today > deadline ? (
-    <p className="secondary small">Everyone below still has tech out after the return deadline. Check each person against the signed paper agreement. Only an admin applies a hold.</p>
+    <p className="secondary small">Everyone below still has books or tech out after the return deadline. Check each person against the signed paper agreement. Only an admin applies a hold.</p>
   ) : (
-    <p className="secondary small">The hold list is ready the day after the return deadline. Until then this shows all tech that is out.</p>
+    <p className="secondary small">The hold list is ready the day after the return deadline. Until then this shows everything that is out.</p>
   );
 }
 
@@ -166,7 +162,7 @@ function HoldsTable({ rows }: { rows: HoldListRow[] }) {
             <th>PID</th>
             <th>Team</th>
             <th>Stage</th>
-            <th className="n">Tech out</th>
+            <th className="n">Still out</th>
             <th>Note</th>
           </tr>
         </thead>
@@ -179,7 +175,7 @@ function HoldsTable({ rows }: { rows: HoldListRow[] }) {
               <td className="pid">{r.borrower.pid}</td>
               <td>{r.borrower.team ?? <span className="muted">—</span>}</td>
               <td>{r.stage === 'ON_HOLD' ? <span className="pill err">On hold</span> : <span className="pill warn">Pending review</span>}</td>
-              <td className="n">{r.openTech}</td>
+              <td className="n">{r.openItems}</td>
               <td className="secondary">{r.note ?? ''}</td>
             </tr>
           ))}

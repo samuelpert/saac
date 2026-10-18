@@ -114,7 +114,12 @@ export class LoansService {
         borrower: {
           select: {
             ...borrowerSelect,
-            _count: { select: { itemLoans: { where: { semesterId, closedAt: null } } } },
+            _count: {
+              select: {
+                itemLoans: { where: { semesterId, closedAt: null } },
+                bookLoans: { where: { semesterId, closedAt: null } },
+              },
+            },
           },
         },
       },
@@ -125,7 +130,7 @@ export class LoansService {
       stage: e.stage as HoldListRow['stage'],
       note: e.note,
       updatedAt: e.updatedAt.toISOString(),
-      openTech: e.borrower._count.itemLoans,
+      openItems: e.borrower._count.itemLoans + e.borrower._count.bookLoans,
     }));
   }
 }

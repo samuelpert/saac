@@ -74,13 +74,13 @@ Use npm workspaces. Keep the API in layers: routes (HTTP only), services (busine
 5. **PID is 7 characters of text, digits only, leading zeros kept.** Never store or parse it as a number. Excel drops leading zeros, so the importer pads 6-digit numeric PIDs to 7 and sends anything else that is not 7 digits to a review list (see `references/student-import.md`). The database also enforces the format.
 6. **Scans are first-class input.** A barcode scanner types like a keyboard and presses Enter. Keep a scan field focused on every checkout and check-in screen, submit on Enter, give instant visual and audible feedback, and keep focus in the field afterward. An unknown code gives a clear message and a path to add it, never a silent failure.
 7. **Imports are safe to run twice and never delete.** Every import upserts on a natural key, shows a dry-run preview (creates, updates, unchanged, needs review), reports row-level problems without aborting the file, and never erases an existing value with a blank. A person missing from a new file is flagged for review, not deleted.
-8. **Nothing sends email or marks a person on hold without a human step.** Reminders default to preview mode, and staff send them. Holds are for technology only. The hold list builds itself after the return deadline, but it only lists people: staff check it against the signed paper page, and only an admin marks someone `ON_HOLD`.
+8. **Nothing sends email or marks a person on hold without a human step.** Reminders default to preview mode, and staff send them. Holds cover books and technology: anyone who has not checked in everything due by the return deadline. The hold list builds itself after the return deadline, but it only lists people: staff check it against the signed paper page, and only an admin marks someone `ON_HOLD`.
 9. **Dates.** Store UTC timestamps, display in America/New_York. Terms use codes like `FALL26`, `SPRING27`, `SUMMER27`.
 10. **No prices.** SAAC lends for free, so catalog tables hold no prices. If a charge ever happens, the amount is typed on that person's escalation record.
 11. **Real student files never enter the repo, chat logs, or tests.** Develop and test with the fake fixture and keep real files in `data-private/`.
 12. **Who can borrow what.** One function, `computeEligibility` in `packages/shared`, decides it, and `canBorrow(status, 'book' | 'tech')` answers each cart line. The dashboard, lists, search, person page and the phase 4 checkout service all use them.
-    - **Athletes borrow books and tech.** Every student import is for a term and tags everyone in the file (`BorrowerTerm`); a person keeps every tag they earn. An athlete can borrow in a term when they carry its tag, the term's return deadline has not passed, and they are on scholarship. From the day after the deadline nobody borrows in that term (scholarship does not carry over) until the next term's list is imported and that term is made current. Scholarship is one yes/no on the person that every import refreshes.
-    - **Staff and graduate assistants borrow tech only, never books.** They have an active switch (`Borrower.staffActive`, default on) that an admin sets on the person page; term tags, deadlines and the scholarship flag do not apply to them. Imports never change the switch.
+    - **Students (athletes and graduate assistants) borrow books and tech.** Every student import is for a term and tags everyone in the file (`BorrowerTerm`); a person keeps every tag they earn. A student can borrow in a term when they carry its tag, the term's return deadline has not passed, and they are on scholarship. There is no override at checkout: an admin switches a student's scholarship on the profile page (audited), and the next import for a term sets it again from the file. From the day after the deadline nobody borrows in that term (scholarship does not carry over) until the next term's list is imported and that term is made current. Scholarship is one yes/no on the person that every import refreshes.
+    - **Staff borrow tech only, never books.** Graduate assistants are students, not staff. They have an active switch (`Borrower.staffActive`, default on) that an admin sets on the person page; term tags, deadlines and the scholarship flag do not apply to them. Imports never change the switch.
     - Returning items is never blocked by any of this.
 13. **Borrowers never log in.** Students, athletes, and staff who borrow are records, not users, and no page is shown to them. Only desk staff and admins have accounts.
 
@@ -131,7 +131,7 @@ Do not guess these. Ask the user, and move the answer to Settled when it is know
 1. How does a student's class list get into the system: typed per student, imported from a file, or another source?
 2. (Settled: there is no active flag. Each import is for a term and tags everyone in the file. See Settled.)
 3. What are the column headers of the supervisor's semester scholarship Excel, if they differ from the sample file?
-4. (Settled: an athlete who is not on scholarship cannot borrow. See rule 13. Still open: whether an admin may override, with a reason.)
+4. (Settled: a student who is not on scholarship cannot borrow and there is no override at checkout. An admin switches scholarship on the student's profile. See rule 12.)
 5. Confirm the Sport column mapping in `references/student-import.md` (staff, GA, and tutor values are roles, `5th Year` and blank values go to review).
 6. What format does the Barnes & Noble term list arrive in (columns, file type)? Does it mark required versus optional books, and is it per class or per student?
 7. When copies are fewer than needs, who gets books first? Default: staff run Assign team by team in the order they choose.
@@ -153,14 +153,14 @@ Do not guess these. Ask the user, and move the answer to Settled when it is know
 - Two panels in one app. Admins (IT and the supervisor) see everything, and front desk staff see the staff panel. Login is a username and password, and only admins create accounts. There is no sign-up.
 - Students and other borrowers never log in, and there is no student-facing page. The optional availability page was dropped.
 - Only admins add people and books, by import. Staff do not add students or books.
-- The hold list covers technology only. It builds itself after the return deadline and exports to Excel. Staff check it against the signed paper page, and only an admin applies a hold. Staff can send return reminders after a preview. Reminders cover both books and technology.
+- The hold list covers books and technology (user decision, October 2026). It builds itself after the return deadline and exports to Excel. Staff check it against the signed paper page, and only an admin applies a hold. Staff can send return reminders after a preview. Reminders cover both books and technology.
 - The restore guide is high priority and built first. A live standby host is a later add-on, and it does not replace backups or the restore guide.
 - Backups run by themselves every night and hourly during desk hours (a setting), to a location off the host.
 - A one-month pilot comes first: staff enter every transaction in both Access and the new app, and Access stays the official system.
 - A one-click reminder button is a later, low-priority feature.
 - Tech items have the statuses available, checked out, in repair, and surplus. Available and checked out are derived from loans. In repair and surplus are set by an admin with a note, and both block checkout.
 - There is no "Who has this" screen and no separate "Student items" screen. Checked-out items (technology) and Checked-out books are two separate screens, each switchable between by student and by item, with a count per student and an Excel export. The hold list is a tab on Checked-out items. Item history opens from any item or tag and shows the current holder and every earlier checkout and check in. The person page shows what one person holds now and in past terms.
-- Holds and the escalation steps apply to technology only. Books are different: they have their own screen and no holds.
+- Holds and the escalation steps apply to books and technology alike. A hold is released by an admin by hand once everything is back; there is no automatic release and no reminder row for it.
 - The hold list is ready the day after the term's return deadline, with grace days defaulting to 0.
 - Scholarship is a yes/no field on the person. There is no separate do-not-borrow list.
 - No book or tech prices are stored in the catalog.

@@ -10,7 +10,7 @@ Priority: P1 is needed at go-live, P2 soon after, P3 later.
 
 | ID | Feature | P |
 | --- | --- | --- |
-| A1 | Person record: PID, name, email, phone, team, role, scholarship yes/no, the term tags they carry, and for staff an active switch. Shows what they can borrow now: athletes books and tech, staff tech only | P1 |
+| A1 | Person record: PID, name, email, phone, team, role, scholarship yes/no, the term tags they carry, and for staff an active switch. Shows what they can borrow now: students (athletes and graduate assistants) books and tech, staff tech only. An admin switches a student's scholarship on the profile | P1 |
 | A2 | Import the student list for a term (`.xlsx` or `.csv`): everyone in the file gets that term's tag. Dry run, review list, and no deletes. Admin only. Spec in `student-import.md` | P1 |
 | A3 | Search as you type by PID or name. Clicking a person's name in any list opens a small card: photo placeholder (no photos for now), first name, last name and Panther ID, each with a copy button, and a link to the person page. The person page shows classes, books and tech held now with counts by type, what they held in past terms, scholarship, team, and contact | P1 |
 | A4 | Add or edit a person by hand for the rare late addition. Admin only, staff do not add people | P1 |
@@ -66,7 +66,7 @@ Spec in `term-books.md`.
 | ID | Feature | P |
 | --- | --- | --- |
 | F1 | Checked-out items (technology): every tech item out now, switchable between by student (each person with their items and a count, with a filter for people holding more than one) and by item (each tag with its holder). Search by PID, name, or a scanned tag. Past due in red, grouped by team, filter by term, export to Excel, print. Tabs: Now, Past due, and the hold list (G3) | P1 |
-| F2 | Checked-out books: the same screen for book copies, by student or by title and copy. A separate screen from tech, and it has no holds | P1 |
+| F2 | Checked-out books: the same screen for book copies, by student or by title and copy. A separate screen from tech. Its Hold list and Holds tabs show the same people as the tech screen, because holds cover books and tech | P1 |
 | F3 | Item history: open any tech item or book copy from a list or by scanning its tag and see who has it now (person, due date, contact) and its whole history: every checkout and check in with person, dates, and condition, plus status changes such as repair or surplus. It is a page, not a separate menu button | P1 |
 
 ### G. Follow-up
@@ -74,8 +74,8 @@ Spec in `term-books.md`.
 | ID | Feature | P |
 | --- | --- | --- |
 | G1 | End-of-term reminder emails: one personalized email per person listing everything they still hold, books and technology, with the due dates. Preview first, staff can exclude people and send them, every send is logged. People with no email are listed for another route such as phone or coach | P2 |
-| G2 | Escalation per person per term, for technology only: reminded, coach notified, hold pending review, on hold, charged, resolved | P2 |
-| G3 | Hold list (proposed, phase 6: the list is computed, so a person who returns everything drops off it at once and the Excel export always matches; an applied hold is never removed by itself, because the real hold sits in FIU's system: the attention queue shows "holds ready to release" and an admin releases each one, which sets the stage to resolved and is audited): the day after the term's return deadline (plus optional grace days, default 0) the system builds, by itself, the list of everyone who still has a tech item (laptop, charger, or other tech) open: person, team, coach, pending items, due date, days late, reminders sent. It exports to Excel in the shape the desk uses today. Staff check each row against the signed paper page, and only an admin marks a person on hold. The system never marks anyone by itself. Books have no holds. It is a tab on Checked-out items | P2 |
+| G2 | Escalation per person per term, for books and technology: reminded, coach notified, hold pending review, on hold, charged, resolved | P2 |
+| G3 | Hold list (user decisions, October 2026: holds cover books and tech; the list is computed, so a person who returns everything drops off it at once and the Excel export always matches; an applied hold is released by an admin by hand, which sets the stage to resolved and is audited; no reminder row): the day after the term's return deadline (plus optional grace days, default 0) the system builds, by itself, the list of everyone who still has a tech item (laptop, charger, or other tech) open: person, team, coach, pending items, due date, days late, reminders sent. It exports to Excel in the shape the desk uses today. Staff check each row against the signed paper page, and only an admin marks a person on hold. The system never marks anyone by itself. Books have no holds. It is a tab on Checked-out items | P2 |
 | G4 | Optional charge amount typed on the escalation record | P3 |
 | G5 | One-click reminder: a button on a person or on the hold list that creates the reminder and emails it in one step. Later, low priority. Needs the sending route from open question 10 | P3 |
 
@@ -195,7 +195,7 @@ The user is designing this. Until it is settled, build only the generic scan fie
 
 **Phase 6: follow-up**
 - Reminder preview shows each email before sending, staff can send them, and every send is logged with its status.
-- The day after the return deadline (plus grace days, default 0) the hold list builds itself and lists exactly the people with an open tech item (never books), with team, coach, pending items, due date, days late, and reminders sent.
+- The day after the return deadline (plus grace days, default 0) the hold list builds itself and lists exactly the people with anything still out, books or tech,, with team, coach, pending items, due date, days late, and reminders sent.
 - The hold list exports to Excel in the shape the desk uses today, and the export matches what is on screen.
 - Opening or exporting the list changes no one's stage. Only an admin can mark someone `ON_HOLD`, and a staff user calling that action is rejected.
 

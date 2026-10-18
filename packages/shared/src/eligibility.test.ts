@@ -24,10 +24,19 @@ describe('athletes', () => {
   });
 });
 
-describe('staff and graduate assistants', () => {
+describe('graduate assistants', () => {
+  it('are students, not staff: term tag, open term and scholarship, then books and tech', () => {
+    const ga: EligibilityInput = { ...athlete, kind: 'GRAD_ASSISTANT' };
+    expect(computeEligibility(ga)).toBe('ELIGIBLE');
+    expect(computeEligibility({ ...ga, onScholarship: false })).toBe('NO_SCHOLARSHIP');
+    expect(computeEligibility({ ...ga, inTerm: false })).toBe('NOT_IN_TERM');
+    expect(computeEligibility({ ...ga, termEnded: true })).toBe('TERM_ENDED');
+  });
+});
+
+describe('staff', () => {
   it('borrow tech only, never books, while active', () => {
     expect(computeEligibility(staff)).toBe('TECH_ONLY');
-    expect(computeEligibility({ ...staff, kind: 'GRAD_ASSISTANT' })).toBe('TECH_ONLY');
     expect(canBorrow('TECH_ONLY', 'tech')).toBe(true);
     expect(canBorrow('TECH_ONLY', 'book')).toBe(false);
   });

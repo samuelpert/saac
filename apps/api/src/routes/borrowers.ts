@@ -41,6 +41,12 @@ export function borrowerRoutes(s: Services) {
     res.json(await s.borrowers.update(req.user!.id, id, req.body));
   });
 
+  r.post('/borrowers/:id/scholarship', requireAdmin, async (req, res) => {
+    const { id } = idParam.parse(req.params);
+    const { onScholarship } = z.object({ onScholarship: z.boolean() }).parse(req.body);
+    res.json(await s.borrowers.setScholarship(req.user!.id, id, onScholarship));
+  });
+
   r.get('/teams', async (_req, res) => {
     res.json(await s.borrowers.teams());
   });

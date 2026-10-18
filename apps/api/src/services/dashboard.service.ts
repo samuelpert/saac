@@ -37,6 +37,7 @@ const HIDDEN_FROM_ACTIVITY = ['user.login', 'user.logout', 'borrower.import_crea
 const ACTION_LABEL: Record<string, string> = {
   'borrower.create': 'Added person',
   'borrower.update': 'Edited person',
+  'borrower.scholarship': 'Changed scholarship',
   'import.students': 'Imported students',
   'user.create': 'Created user',
   'user.update': 'Edited user',
@@ -119,13 +120,14 @@ export class DashboardService {
     };
   }
 
-  /** People tagged for the term. Athletes, and staff including graduate assistants. */
+  /** People tagged for the term: athletes, graduate assistants and staff. */
   async people(termId: string): Promise<PeopleTile> {
     const groups = await this.db.borrower.groupBy({ by: ['kind'], where: { terms: { some: { semesterId: termId } } }, _count: { _all: true } });
     const by = (k: string) => groups.find((g) => g.kind === k)?._count._all ?? 0;
     const athletes = by('ATHLETE');
-    const staff = by('STAFF') + by('GRAD_ASSISTANT');
-    return { total: athletes + staff, athletes, staff };
+    const gradAssistants = by('GRAD_ASSISTANT');
+    const staff = by('STAFF');
+    return { total: athletes + gradAssistants + staff, athletes, gradAssistants, staff };
   }
 
   async pastDue(termId: string, now: Date): Promise<PastDueTile> {
@@ -307,13 +309,14 @@ export class DashboardService {
     rows.push({ key: 'reminders-preview', text: 'Reminders waiting for preview', count: previews, tone: 'warn', href: '/reminders' });
 
     if (term && nyDate(now) > term.returnDeadline && daysBetween(term.returnDeadline, nyDate(now)) > (this.opts.holdGraceDays ?? 0)) {
-      const holdList = await this.db.borrower.count({ where: { itemLoans: { some: { semesterId: termId, closedAt: null } } } });
-      rows.push({ key: 'hold-list', text: 'Hold list ready: tech still out after the return deadline', count: holdList, tone: 'warn', href: link('/checked-out/items', 'holdlist') });
+      // Holds cover books and tech: anyone with anything still out after the deadline.
+      const holdList = await this.db.borrower.count({ where: holdingWhere(termId) });
+      rows.push({ key: 'hold-list', text: 'Hold list ready: books or tech still out after the return deadline', count: holdList, tone: 'warn', href: link('/checked-out/all', 'holdlist') });
     }
 
     if (isAdmin) {
       const pending = await this.db.escalation.count({ where: { semesterId: termId, stage: 'HOLD_PENDING_REVIEW' } });
-      rows.push({ key: 'holds-admin', text: 'Holds waiting for an admin', count: pending, tone: 'warn', href: link('/checked-out/items', 'holds') });
+      rows.push({ key: 'holds-admin', text: 'Holds waiting for an admin', count: pending, tone: 'warn', href: link('/checked-out/all', 'holds') });
     }
 
     const { shortTitles } = await this.shortages(termId);

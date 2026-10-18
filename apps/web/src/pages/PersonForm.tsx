@@ -118,22 +118,22 @@ export function PersonForm() {
             <input className="input num" inputMode="tel" value={form.phone} onChange={(e) => set('phone', e.target.value)} />
           </Field>
         </div>
-        {form.kind === 'ATHLETE' && (
+        {form.kind !== 'STAFF' && (
           <label className="check">
             <input type="checkbox" checked={form.onScholarship} onChange={(e) => set('onScholarship', e.target.checked)} />
-            On scholarship (athletes need this to borrow)
+            On scholarship (students need this to borrow)
           </label>
         )}
-        {form.kind !== 'ATHLETE' && (
+        {form.kind === 'STAFF' && (
           <label className="check">
             <input type="checkbox" checked={form.staffActive} onChange={(e) => set('staffActive', e.target.checked)} />
             Active staff (can borrow tech, never books)
           </label>
         )}
-        {form.kind === 'ATHLETE' && (
+        {form.kind !== 'STAFF' && (
           <fieldset className="stack" style={{ border: 0, padding: 0, margin: 0, gap: 0 }}>
             <legend className="small medium secondary" style={{ marginBottom: 6 }}>
-              Terms. An athlete can borrow only in a term they are tagged for.
+              Terms. A student can borrow only in a term they are tagged for.
             </legend>
             {terms.data?.length === 0 && <span className="muted">No terms yet. Add one on the Terms screen.</span>}
             {terms.data?.map((t) => (

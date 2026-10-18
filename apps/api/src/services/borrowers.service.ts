@@ -122,7 +122,7 @@ export class BorrowersService {
       AND: [
         query.term ? { terms: { some: { semesterId: ref!.id } } } : {},
         query.kind ? { kind: query.kind } : {},
-        query.staffActive ? { kind: { not: 'ATHLETE' }, staffActive: query.staffActive === 'true' } : {},
+        query.staffActive ? { kind: 'STAFF', staffActive: query.staffActive === 'true' } : {},
         query.teamId ? { teamId: query.teamId } : {},
         query.holdingTermId ? holdingWhere(query.holdingTermId) : {},
         query.q ? (/^\d+$/.test(query.q) ? { pid: { startsWith: query.q } } : nameWhere(query.q)) : {},
@@ -298,6 +298,32 @@ export class BorrowersService {
         before: borrowerSnapshot(before, before.terms.map((t) => t.semester.code)),
         after: borrowerSnapshot(after, wanted.map((s) => s.code)),
       });
+      const full = await tx.borrower.findUniqueOrThrow({ where: { id }, include: summaryInclude });
+      return toSummary(full, await this.refTerm());
+    });
+  }
+
+  /**
+   * An admin switches a student's scholarship on or off from their profile. There is no override
+   * at checkout: this switch is the only way past "not on scholarship". The next student import
+   * for a term sets it again from the file.
+   */
+  async setScholarship(actorId: string, id: string, onScholarship: boolean): Promise<BorrowerSummary> {
+    return this.db.$transaction(async (tx) => {
+      const before = await tx.borrower.findUnique({ where: { id } });
+      if (!before) throw notFound('No such person');
+      if (before.kind === 'STAFF') throw badRequest('Staff have no scholarship. Use the active switch instead.');
+      const after = await tx.borrower.update({ where: { id }, data: { onScholarship } });
+      if (before.onScholarship !== onScholarship) {
+        await audit(tx, {
+          userId: actorId,
+          action: 'borrower.scholarship',
+          entityType: 'Borrower',
+          entityId: id,
+          before: { pid: before.pid, onScholarship: before.onScholarship },
+          after: { pid: after.pid, onScholarship },
+        });
+      }
       const full = await tx.borrower.findUniqueOrThrow({ where: { id }, include: summaryInclude });
       return toSummary(full, await this.refTerm());
     });

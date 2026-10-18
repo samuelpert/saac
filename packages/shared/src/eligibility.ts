@@ -4,14 +4,14 @@ import type { BorrowerKind } from './schemas';
  * What a person may borrow right now in a term. This is the one definition: the dashboard,
  * the lists, the person page and (phase 4) the checkout service all use it.
  *
- * Athletes (books and tech):
+ * Students, meaning athletes and graduate assistants (books and tech):
  * - NOT_IN_TERM: no tag for the term.
  * - TERM_ENDED: tagged, but the term's return deadline has passed. Scholarship does not carry over:
  *   from the day after the deadline nobody can borrow until the next term's list is imported.
  * - NO_SCHOLARSHIP: tagged and the term is open, but not on scholarship.
  * - ELIGIBLE: tagged, the term is open, and on scholarship. Books and tech.
  *
- * Staff and graduate assistants (tech only, never books). Term tags and deadlines do not apply:
+ * Staff (tech only, never books). Term tags, deadlines and scholarship do not apply:
  * - TECH_ONLY: active staff. Tech only.
  * - STAFF_INACTIVE: an admin switched them off.
  *
@@ -28,7 +28,7 @@ export interface EligibilityInput {
 }
 
 export function computeEligibility(p: EligibilityInput): Eligibility {
-  if (p.kind !== 'ATHLETE') return p.staffActive ? 'TECH_ONLY' : 'STAFF_INACTIVE';
+  if (p.kind === 'STAFF') return p.staffActive ? 'TECH_ONLY' : 'STAFF_INACTIVE';
   if (!p.inTerm) return 'NOT_IN_TERM';
   if (p.termEnded) return 'TERM_ENDED';
   if (!p.onScholarship) return 'NO_SCHOLARSHIP';

@@ -7,6 +7,7 @@ export type Widget<T> = { ok: true; data: T } | { ok: false; error: string };
 export interface PeopleTile {
   total: number;
   athletes: number;
+  gradAssistants: number;
   staff: number;
 }
 
@@ -159,7 +160,8 @@ export interface HoldListRow {
   stage: 'HOLD_PENDING_REVIEW' | 'ON_HOLD';
   note: string | null;
   updatedAt: string;
-  openTech: number;
+  /** Open loans, books and tech. */
+  openItems: number;
 }
 
 // ---- Item lookup and history ------------------------------------------------------

@@ -72,7 +72,7 @@ function Dashboard({ d, isAdmin, withTerm }: { d: DashboardResponse; isAdmin: bo
               <>
                 <span className="value">{fmtNumber(p.total)}</span>
                 <span className="sub">
-                  {fmtNumber(p.athletes)} athletes · {fmtNumber(p.staff)} staff
+                  {fmtNumber(p.athletes)} athletes{p.gradAssistants > 0 && ` · ${fmtNumber(p.gradAssistants)} grad assistants`} · {fmtNumber(p.staff)} staff
                 </span>
               </>
             )}
@@ -114,14 +114,14 @@ function Dashboard({ d, isAdmin, withTerm }: { d: DashboardResponse; isAdmin: bo
             )}
           </WidgetBody>
         </Link>
-        <Link className="tile" to={withTerm('/checked-out/items', { view: 'holds' })}>
+        <Link className="tile" to={withTerm('/checked-out/all', { view: 'holds' })}>
           <span className="label">Holds</span>
           <WidgetBody widget={w.holds}>
             {(h) => (
               <>
                 <span className="value">{fmtNumber(h.total)}</span>
                 <span className="sub">
-                  tech only · {h.total === 0 ? 'none' : [h.pending && `${h.pending} pending`, h.onHold && `${h.onHold} on hold`].filter(Boolean).join(', ')}
+                  {h.total === 0 ? 'none' : [h.pending && `${h.pending} pending`, h.onHold && `${h.onHold} on hold`].filter(Boolean).join(', ')}
                 </span>
               </>
             )}

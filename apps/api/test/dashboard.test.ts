@@ -101,7 +101,8 @@ describe.skipIf(!hasDb)('dashboard', () => {
     expect(data(w.people)).toEqual({
       total: await sql(`SELECT count(*) n FROM ${inTerm}`),
       athletes: await sql(`SELECT count(*) n FROM ${inTerm} AND b.kind = 'ATHLETE'`),
-      staff: await sql(`SELECT count(*) n FROM ${inTerm} AND b.kind <> 'ATHLETE'`),
+      gradAssistants: await sql(`SELECT count(*) n FROM ${inTerm} AND b.kind = 'GRAD_ASSISTANT'`),
+      staff: await sql(`SELECT count(*) n FROM ${inTerm} AND b.kind = 'STAFF'`),
     });
     expect(data(w.booksOut)).toBe(await sql(`SELECT count(*) n FROM "BookLoan" WHERE "semesterId" = '${tid}' AND "closedAt" IS NULL`));
     expect(data(w.techOut)).toBe(await sql(`SELECT count(*) n FROM "ItemLoan" WHERE "semesterId" = '${tid}' AND "closedAt" IS NULL`));
@@ -115,7 +116,7 @@ describe.skipIf(!hasDb)('dashboard', () => {
     );
     expect(data(w.deadline)?.daysLeft).toBeGreaterThan(40);
     // Known values for the fixture, as a second check.
-    expect(data(w.people)).toEqual({ total: 7, athletes: 5, staff: 2 }); // the 8th person is on file but has no FALL26 tag
+    expect(data(w.people)).toEqual({ total: 7, athletes: 5, gradAssistants: 1, staff: 1 }); // the 8th person is on file but has no FALL26 tag
     expect(data(w.booksOut)).toBe(2);
     expect(data(w.techOut)).toBe(2);
     expect(data(w.pastDue)).toEqual({ total: 2, books: 1, tech: 1 });
@@ -129,7 +130,14 @@ describe.skipIf(!hasDb)('dashboard', () => {
     const pastDue = (await admin.get('/api/loans/all?view=pastdue')).body.rows;
     expect(pastDue).toHaveLength(data(w.pastDue).total);
     expect(pastDue.every((r: { pastDue: boolean }) => r.pastDue)).toBe(true);
-    expect((await admin.get('/api/loans/items?view=holds')).body.holds).toHaveLength(data(w.holds).total);
+    const holds = (await admin.get('/api/loans/all?view=holds')).body.holds as { borrower: { pid: string }; openItems: number }[];
+    expect(holds).toHaveLength(data(w.holds).total);
+    // Holds cover books and tech: one person holds a past-due book, the other a past-due laptop.
+    expect(holds.map((h) => [h.borrower.pid, h.openItems]).sort()).toEqual([
+      ['9100002', 1],
+      ['9100004', 1],
+    ]);
+    expect((await admin.get('/api/loans/books?view=holds')).body.holds).toHaveLength(data(w.holds).total);
     expect((await admin.get('/api/borrowers?holding=FALL26&pageSize=200')).body.total).toBe(data(w.deadline)!.peopleHolding);
     // The people list for the term also shows a past term's own tags, not the current one's.
     expect((await admin.get('/api/borrowers?term=SPRING26&pageSize=200')).body.total).toBe(0);

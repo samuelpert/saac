@@ -6,7 +6,7 @@ The book receipt is the paper record of what a person borrowed in a term. It is 
 
 ## 1. Purpose
 
-One receipt per person per term, for people who borrow books. It lists each book grouped by class, with the dates, two pairs of initials and dates (received and returned) for every book, and the signed Book Return Agreement. It is the paper record staff check returned books against. Holds are for technology only, so the tech agreement (D4) is the paper checked when building the hold list.
+One receipt per person per term, for people who borrow books. It lists each book grouped by class, with the dates, two pairs of initials and dates (received and returned) for every book, and the signed Book Return Agreement. It is the paper record staff check returned books against. Holds cover books and technology, so both this receipt and the tech agreement (D4) are the papers checked when building the hold list.
 
 ## 2. Layout
 

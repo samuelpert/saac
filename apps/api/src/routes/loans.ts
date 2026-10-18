@@ -22,7 +22,11 @@ export function loanRoutes(s: Services) {
   }
 
   r.get('/loans/books', async (req, res) => {
-    const { term, filter, teamId } = await resolve(req.query);
+    const { term, filter, teamId, view } = await resolve(req.query);
+    if (view === 'holds') {
+      res.json({ term, holds: await s.loans.listHolds(term.id) });
+      return;
+    }
     res.json({ term, rows: await s.loans.listBooks({ semesterId: term.id, filter, teamId }) });
   });
 
@@ -36,7 +40,11 @@ export function loanRoutes(s: Services) {
   });
 
   r.get('/loans/all', async (req, res) => {
-    const { term, filter, teamId } = await resolve(req.query);
+    const { term, filter, teamId, view } = await resolve(req.query);
+    if (view === 'holds') {
+      res.json({ term, holds: await s.loans.listHolds(term.id) });
+      return;
+    }
     const [books, items] = await Promise.all([
       s.loans.listBooks({ semesterId: term.id, filter, teamId }),
       s.loans.listItems({ semesterId: term.id, filter, teamId }),

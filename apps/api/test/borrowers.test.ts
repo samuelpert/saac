@@ -17,7 +17,7 @@ describe.skipIf(!hasDb)('people, term tags and eligibility', () => {
     const ended = await t.db.semester.create({ data: { code: 'SPRING26', startsOn: day(-250), endsOn: day(-150), returnDeadline: day(-145) } });
     const fall = await t.db.semester.create({ data: { code: 'FALL26', startsOn: day(-60), endsOn: day(40), returnDeadline: day(45), isCurrent: true } });
     const spring = await t.db.semester.create({ data: { code: 'SPRING27', startsOn: day(120), endsOn: day(220), returnDeadline: day(225) } });
-    const mk = async (key: string, pid: string, kind: 'ATHLETE' | 'STAFF', onScholarship: boolean, terms: string[], staffActive = true) => {
+    const mk = async (key: string, pid: string, kind: 'ATHLETE' | 'STAFF' | 'GRAD_ASSISTANT', onScholarship: boolean, terms: string[], staffActive = true) => {
       const b = await t.db.borrower.create({ data: { pid, firstName: 'Fake', lastName: key, kind, onScholarship, staffActive } });
       ids[key] = b.id;
       for (const id of terms) await t.db.borrowerTerm.create({ data: { borrowerId: b.id, semesterId: id } });
@@ -28,6 +28,7 @@ describe.skipIf(!hasDb)('people, term tags and eligibility', () => {
     await mk('Staffer', '9300004', 'STAFF', false, [fall.id]);
     await mk('Veteran', '9300005', 'ATHLETE', true, [ended.id, fall.id, spring.id]);
     await mk('Retired', '9300006', 'STAFF', false, [], false);
+    await mk('Assistant', '9300007', 'GRAD_ASSISTANT', false, [fall.id]);
     admin = await signIn(t.app, 'boss');
     desk = await signIn(t.app, 'desk');
   });
@@ -60,7 +61,7 @@ describe.skipIf(!hasDb)('people, term tags and eligibility', () => {
     const spring = (await desk.get('/api/borrowers?term=SPRING27')).body;
     expect(spring.rows.map((r: { lastName: string }) => r.lastName)).toEqual(['Veteran']);
     expect(spring.rows[0].eligibilityTerm).toBe('SPRING27');
-    expect((await desk.get('/api/borrowers?term=FALL26')).body.total).toBe(4);
+    expect((await desk.get('/api/borrowers?term=FALL26')).body.total).toBe(5);
   });
 
   it('after a term\'s return deadline nobody can borrow in it, scholarship or not', async () => {
@@ -90,6 +91,24 @@ describe.skipIf(!hasDb)('people, term tags and eligibility', () => {
     expect(entry.before).toMatchObject({ staffActive: true });
     expect(entry.after).toMatchObject({ staffActive: false });
     await admin.put(`/api/borrowers/${ids.Staffer}`).send({ ...body, staffActive: true });
+  });
+
+  it('graduate assistants are students: they need the tag and a scholarship, and are not staff', async () => {
+    const { rows } = (await desk.get('/api/borrowers?pageSize=50')).body;
+    expect(byName(rows, 'Assistant').eligibility).toBe('NO_SCHOLARSHIP');
+    expect(((await desk.get('/api/borrowers?staffActive=true')).body.rows as Row[]).map((r) => r.lastName)).not.toContain('Assistant');
+  });
+
+  it('only an admin switches a student\'s scholarship from the profile, and it is audited', async () => {
+    expect((await desk.post(`/api/borrowers/${ids.Assistant}/scholarship`).send({ onScholarship: true })).status).toBe(403);
+    const on = await admin.post(`/api/borrowers/${ids.Assistant}/scholarship`).send({ onScholarship: true });
+    expect(on.body).toMatchObject({ onScholarship: true, eligibility: 'ELIGIBLE' });
+    const entry = await t.db.auditLog.findFirstOrThrow({ where: { action: 'borrower.scholarship', entityId: ids.Assistant } });
+    expect(entry.before).toMatchObject({ onScholarship: false });
+    expect(entry.after).toMatchObject({ onScholarship: true });
+    // Staff have no scholarship to switch.
+    expect((await admin.post(`/api/borrowers/${ids.Staffer}/scholarship`).send({ onScholarship: true })).status).toBe(400);
+    await admin.post(`/api/borrowers/${ids.Assistant}/scholarship`).send({ onScholarship: false });
   });
 
   it('search carries eligibility too, for any term asked', async () => {

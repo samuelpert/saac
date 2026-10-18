@@ -1,11 +1,12 @@
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
 import { BORROWER_KIND_LABEL, type BorrowerDetail } from '@saac/shared';
-import { apiGet } from '../api/client';
+import { apiGet, apiSend } from '../api/client';
 import { useIsAdmin } from '../auth/AuthContext';
 import { TagLink } from '../components/ItemBits';
 import { CopyButton } from '../components/PersonCard';
-import { EligibilityPill, EmptyState, ErrorText, Feedback, Glyph, Loading, PageHead, TermTags } from '../components/ui';
+import { Dialog, EligibilityPill, EmptyState, ErrorText, Feedback, Glyph, Loading, PageHead, TermTags } from '../components/ui';
 import { fmtDate } from '../lib/format';
 
 export function Person() {
@@ -28,14 +29,17 @@ export function Person() {
             <span>· {BORROWER_KIND_LABEL[p.kind]}</span>
             {p.team && <span>· {p.team.name}</span>}
             <EligibilityPill status={p.eligibility} term={p.eligibilityTerm} />
-            {p.kind === 'ATHLETE' && (p.onScholarship ? <span className="pill info">On scholarship</span> : <span className="pill warn">Not on scholarship</span>)}
+            {p.kind !== 'STAFF' && (p.onScholarship ? <span className="pill info">On scholarship</span> : <span className="pill warn">Not on scholarship</span>)}
           </span>
         }
         actions={
           isAdmin && (
-            <Link className="btn" to={`/people/${p.id}/edit`}>
-              Edit person
-            </Link>
+            <>
+              {p.kind !== 'STAFF' && <ScholarshipSwitch person={p} />}
+              <Link className="btn" to={`/people/${p.id}/edit`}>
+                Edit person
+              </Link>
+            </>
           )
         }
       />
@@ -47,7 +51,7 @@ export function Person() {
         <Feedback fb={{ tone: 'warn', word: 'Inactive staff', text: 'An admin switched this staff member off, so they cannot borrow. They can still return what they hold.' }} />
       )}
       {p.eligibility === 'NO_SCHOLARSHIP' && (
-        <Feedback fb={{ tone: 'warn', word: 'Not on scholarship', text: `Athletes need a scholarship to borrow. They can still return what they hold.` }} />
+        <Feedback fb={{ tone: 'warn', word: 'Not on scholarship', text: `Students need a scholarship to borrow. They can still return what they hold.` }} />
       )}
 
       <div className="grid-2">
@@ -116,8 +120,8 @@ export function Person() {
             <dt>Team</dt>
             <dd>{p.team?.name ?? <span className="muted">No team</span>}</dd>
             <dt>Scholarship</dt>
-            <dd>{p.kind === 'ATHLETE' ? (p.onScholarship ? 'Yes' : 'No') : <span className="muted">Not applicable</span>}</dd>
-            {p.kind === 'ATHLETE' ? (
+            <dd>{p.kind !== 'STAFF' ? (p.onScholarship ? 'Yes' : 'No') : <span className="muted">Not applicable</span>}</dd>
+            {p.kind !== 'STAFF' ? (
               <>
                 <dt>Terms</dt>
                 <dd>
@@ -175,6 +179,47 @@ export function Person() {
           )}
         </section>
       </div>
+    </>
+  );
+}
+
+/** Admin only. The one way to let a student past "not on scholarship"; there is no override at checkout. */
+function ScholarshipSwitch({ person }: { person: BorrowerDetail }) {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const turnOn = !person.onScholarship;
+  const save = useMutation({
+    mutationFn: () => apiSend('POST', `/api/borrowers/${person.id}/scholarship`, { onScholarship: turnOn }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['borrower', person.id] });
+      void qc.invalidateQueries({ queryKey: ['borrowers'] });
+      setOpen(false);
+    },
+  });
+  return (
+    <>
+      <button type="button" className="btn" onClick={() => setOpen(true)}>
+        {turnOn ? 'Mark on scholarship' : 'Remove scholarship'}
+      </button>
+      {open && (
+        <Dialog title={turnOn ? 'Mark on scholarship?' : 'Remove scholarship?'} onClose={() => setOpen(false)}>
+          <p className="secondary">
+            {turnOn
+              ? `${person.firstName} ${person.lastName} will count as on scholarship and can borrow in any term they are tagged for.`
+              : `${person.firstName} ${person.lastName} will not be able to borrow until they are on scholarship again.`}{' '}
+            The next student import for a term sets this again from the file. The change is recorded in the audit log.
+          </p>
+          <ErrorText error={save.error} />
+          <div className="actions">
+            <button type="button" className="btn" onClick={() => setOpen(false)}>
+              Cancel
+            </button>
+            <button type="button" className="btn primary" disabled={save.isPending} onClick={() => save.mutate()}>
+              {turnOn ? 'Mark on scholarship' : 'Remove scholarship'}
+            </button>
+          </div>
+        </Dialog>
+      )}
     </>
   );
 }
