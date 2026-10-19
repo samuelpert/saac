@@ -21,7 +21,7 @@ const PING_EVERY_MS = 60_000;
 export function AuthProvider({ children }: { children: ReactNode }) {
   const qc = useQueryClient();
   const [user, setUser] = useState<SessionUser | null>(null);
-  const [idleMinutes, setIdleMinutes] = useState(15);
+  const [idleMinutes, setIdleMinutes] = useState(120);
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState<string | null>(null);
   const lastActivity = useRef(Date.now());
@@ -74,7 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     for (const e of ACTIVITY_EVENTS) window.addEventListener(e, onActivity, { passive: true });
     const timer = window.setInterval(() => {
       if (Date.now() - lastActivity.current > idleMinutes * 60_000) {
-        void logout(`Signed out after ${idleMinutes} minutes without activity.`);
+        void logout(`Signed out after ${idleMinutes % 60 === 0 ? `${idleMinutes / 60} ${idleMinutes === 60 ? 'hour' : 'hours'}` : `${idleMinutes} minutes`} without activity.`);
       }
     }, 15_000);
     return () => {

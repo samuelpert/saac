@@ -77,4 +77,4 @@ Hourly copies are kept 2 days, nightly copies 30 days.
 - Admins create accounts on **Users**. There is no sign-up and no shared login.
 - A reset gives a temporary password and signs the person out everywhere.
 - Disable an account instead of deleting it, so the audit log keeps its name.
-- A session signs out after `SESSION_IDLE_MINUTES` (default 15) without use. "Switch user" in the sidebar signs out at once for the next person.
+- A session signs out after `SESSION_IDLE_MINUTES` (default 120, two hours) without use. "Switch user" in the sidebar signs out at once for the next person.

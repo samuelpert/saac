@@ -3,7 +3,7 @@ import { z } from 'zod';
 const envSchema = z.object({
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is not set. Copy .env.example to .env and fill it in.'),
   PORT: z.coerce.number().int().positive().default(3000),
-  SESSION_IDLE_MINUTES: z.coerce.number().int().min(1).max(240).default(15),
+  SESSION_IDLE_MINUTES: z.coerce.number().int().min(1).max(240).default(120),
   COOKIE_SECURE: z
     .enum(['true', 'false'])
     .default('false')
