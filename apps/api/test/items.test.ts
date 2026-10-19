@@ -38,6 +38,15 @@ describe.skipIf(!hasDb)('item lookup and history', () => {
     expect((await lookup('l-0942'))[0]?.tag).toBe('SAAC Laptop 942');
   });
 
+  it('gives the saved identifier for the barcode, and a scanned identifier finds only its own item', async () => {
+    await t.db.item.create({ data: { assetTag: 'L-09420', name: 'SAAC Laptop 9420', typeId: (await t.db.itemType.findFirstOrThrow({ where: { name: 'Laptops' } })).id } });
+    const exact = await lookup('l-0942');
+    expect(exact.map((i) => i.code)).toEqual(['L-0942']);
+    expect((await lookup('L-094')).map((i) => i.code).sort()).toEqual(['L-0942', 'L-09420']);
+    expect((await lookup('C-00001'))[0]?.code).toBe('C-00001');
+    expect(await lookup('NOSUCHTAG99')).toEqual([]);
+  });
+
   it('derives the state: in repair, retired, available', async () => {
     expect((await lookup('charger 941'))[0]).toMatchObject({ state: 'IN_REPAIR', holder: null });
     expect((await lookup('L-0100'))[0]).toMatchObject({ state: 'RETIRED' });

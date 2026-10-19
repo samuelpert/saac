@@ -13,6 +13,9 @@ import { EligibilityPill, EmptyState, Feedback, Glyph, type FeedbackMessage } fr
 
 type Selected = { kind: 'person'; id: string } | { kind: 'item'; item: ItemMatch } | null;
 
+/** What a scanned label looks like: one word of letters and digits, such as SAACLAPTOP942 or C-00012. */
+const looksLikeBarcode = (q: string) => /^[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(q) && /\d/.test(q) && /[A-Za-z]/.test(q);
+
 /**
  * The one search on Home. A Panther ID or a name finds a student and shows what they hold.
  * A tech tag ("SAACLAPTOP942", "laptop942") or a book copy tag finds the item and shows
@@ -84,7 +87,8 @@ export function ScanBox({ term }: { term?: string }) {
       return;
     }
     if (r.matches.length === 0 && found.length === 0) {
-      setFb({ tone: 'err', word: 'Not found', text: `No student or item matches “${q}”.` });
+      // An unknown label never offers to register an item; the scan is just tried again.
+      setFb(looksLikeBarcode(q) ? { tone: 'err', word: 'Not found', text: 'Barcode not recognized. Please try again.' } : { tone: 'err', word: 'Not found', text: `No student or item matches “${q}”.` });
       beep('err');
       return;
     }
@@ -103,7 +107,9 @@ export function ScanBox({ term }: { term?: string }) {
   async function submit(q: string) {
     setValue(q);
     await run(q);
+    // Keep focus and select the text, so the next scan replaces it instead of adding to it.
     ref.current?.focus();
+    ref.current?.select();
   }
 
   return (

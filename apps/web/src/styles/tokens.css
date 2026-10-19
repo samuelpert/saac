@@ -96,3 +96,9 @@
 
   --motion: 150ms ease-out;
 }
+
+/* Barcodes are black on white in every theme, so any scanner reads them. */
+:root {
+  --barcode-ink: #000000;
+  --barcode-paper: #FFFFFF;
+}

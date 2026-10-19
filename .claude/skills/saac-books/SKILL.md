@@ -32,7 +32,7 @@ These shape every decision, so check new work against them.
 | Tests | Vitest, plus integration tests against a real throwaway Postgres |
 | PDF | pdfkit (receipts, agreements, printable reports) |
 | Excel/CSV | exceljs and csv-parse |
-| Barcodes | Decided in the barcode step (see `references/features.md`) |
+| Barcodes | Code 128 drawn in the browser with JsBarcode from the item's saved identifier; never stored (see `references/features.md` section 2) |
 | Host | One always-on Windows computer, desktop preferred. Native PostgreSQL, one Node process serving the API and the built frontend on one port. See `references/hosting.md` |
 | Dev and test | Develop on macOS with a local PostgreSQL and fake data. Test and run for real on the Windows desktop host, which has its own local PostgreSQL. Nothing is set up on the Mac just for testing |
 
@@ -72,7 +72,7 @@ Use npm workspaces. Keep the API in layers: routes (HTTP only), services (busine
 3. **Every mutation is audited.** Record who, what, which entity, and before/after values. The audit log is append-only: no update or delete path exists in the API.
 4. **Every staff action needs a logged-in user.** Local accounts with a username and password (argon2 hashes) and httpOnly session cookies. There is no self sign-up: only admins create, reset, and deactivate accounts. A session signs out after a few minutes of inactivity, with a quick switch-user action for the shared desk computer. Roles are `ADMIN` (IT and the supervisor) and `STAFF` (front desk). It is one app with two panels, and the server enforces the role, not only the screen. Only admins manage users, run imports, and add people or books. No shared logins and no hardcoded credentials.
 5. **PID is 7 characters of text, digits only, leading zeros kept.** Never store or parse it as a number. Excel drops leading zeros, so the importer pads 6-digit numeric PIDs to 7 and sends anything else that is not 7 digits to a review list (see `references/student-import.md`). The database also enforces the format.
-6. **Scans are first-class input.** A barcode scanner types like a keyboard and presses Enter. Keep a scan field focused on every checkout and check-in screen, submit on Enter, give instant visual and audible feedback, and keep focus in the field afterward. An unknown code gives a clear message and a path to add it, never a silent failure.
+6. **Scans are first-class input.** A barcode scanner types like a keyboard and presses Enter. Keep a scan field focused on every checkout and check-in screen, submit on Enter, give instant visual and audible feedback, and keep focus in the field afterward. An unknown code shows "Barcode not recognized. Please try again." and never offers to register an item (user decision, October 2026).
 7. **Imports are safe to run twice and never delete.** Every import upserts on a natural key, shows a dry-run preview (creates, updates, unchanged, needs review), reports row-level problems without aborting the file, and never erases an existing value with a blank. A person missing from a new file is flagged for review, not deleted.
 8. **Nothing sends email or marks a person on hold without a human step.** Reminders default to preview mode, and staff send them. Holds cover books and technology: anyone who has not checked in everything due by the return deadline. The hold list builds itself after the return deadline, but it only lists people: staff check it against the signed paper page, and only an admin marks someone `ON_HOLD`.
 9. **Dates.** Store UTC timestamps, display in America/New_York. Terms use codes like `FALL26`, `SPRING27`, `SUMMER27`.
@@ -116,7 +116,7 @@ Finish each phase before starting the next, and update the tracker in `reference
 
 0. Scaffold, host setup, login and roles, audit log, automatic backups, and the restore guide (high priority)
 1. Admin dashboard and people: dashboard shell, student import, search, person page
-2. Inventory: tech items, book titles, book copies (labels wait for the barcode step)
+2. Inventory: tech items, book titles, book copies, and their barcodes
 3. Term books and needs: terms, book list import, class schedules, needs, assigning copies, pull list, shortage report
 4. Lend and return: books, tech, receipts, agreements
 5. Lookups and reports
@@ -142,7 +142,7 @@ Do not guess these. Ask the user, and move the answer to Settled when it is know
 12. Has the supervisor or FIU IT approved holding student records on this computer?
 13. Default loan length for books and for tech, and who may override a due date?
 14. Does SAAC ever charge for unreturned items? The receipt agreement says students are financially responsible for lost items and technology, so default to yes and keep the `CHARGED` stage and the optional charge amount.
-15. Barcode step decisions: what a label encodes, label format, scanner model, and label printer. This also decides whether staff may add book copies at an intake screen or only admins.
+15. Barcode step: settled October 2026 (see `references/features.md` section 2). Still open: the label printer and sticker size, and the scanner model.
 16. Which numbers does the supervisor want first each day? The dashboard widget list is a draft until this is answered.
 17. Which two people (supervisor, IT, or the developer) are trained to run the restore guide, and where is the printed copy kept?
 

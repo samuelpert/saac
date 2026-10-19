@@ -125,6 +125,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .card-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; }
 .card-head a, .card-link { font-size: 13px; font-weight: 500; }
 .card.danger { background: var(--color-danger-bg); border-color: var(--color-danger-border); }
+.barcode { align-self: flex-start; max-width: 100%; }
+.barcode svg { display: block; max-width: 100%; height: auto; }
 .card.danger h2, .card.danger .health-value { color: var(--color-danger); }
 .card.danger a { color: var(--color-danger); }
 

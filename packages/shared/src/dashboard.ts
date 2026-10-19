@@ -173,6 +173,8 @@ export interface ItemMatch {
   id: string;
   kind: 'tech' | 'book';
   tag: string;
+  /** The saved identifier a barcode holds: the tech item's asset tag or the copy's tag. */
+  code: string;
   name: string;
   typeName: string;
   state: ItemState;

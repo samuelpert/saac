@@ -12,6 +12,7 @@ import {
   type ItemTypeRow,
 } from '@saac/shared';
 import { apiGet, apiSend } from '../api/client';
+import { BarcodeCard, PrintAllBarcodes } from '../components/Barcode';
 import { ItemStatePill, TagLink } from '../components/ItemBits';
 import { PersonName } from '../components/PersonCard';
 import { Dialog, EmptyState, ErrorText, Field, PageHead } from '../components/ui';
@@ -23,7 +24,7 @@ export function Inventory() {
   const tab = params.get('tab') === 'books' ? 'books' : 'tech';
   return (
     <>
-      <PageHead title="Inventory" sub="Every laptop, charger and book SAAC owns. Labels come with the barcode step." />
+      <PageHead title="Inventory" sub="Every laptop, charger and book SAAC owns. Each item's barcode is on its page." />
       <div className="tabs" role="tablist">
         {(
           [
@@ -179,15 +180,15 @@ function TechTab() {
   );
 }
 
-function useInventoryMutation<T>(fn: (body: T) => Promise<unknown>, onClose: () => void) {
+function useInventoryMutation<T, R = unknown>(fn: (body: T) => Promise<R>, onDone: (saved: R) => void) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: fn,
-    onSuccess: () => {
+    onSuccess: (saved) => {
       void qc.invalidateQueries({ queryKey: ['inventory-items'] });
       void qc.invalidateQueries({ queryKey: ['item-types'] });
       void qc.invalidateQueries({ queryKey: ['dashboard'] });
-      onClose();
+      onDone(saved);
     },
   });
 }
@@ -195,7 +196,26 @@ function useInventoryMutation<T>(fn: (body: T) => Promise<unknown>, onClose: () 
 function ItemForm({ types, item, onClose }: { types: ItemTypeRow[]; item?: InventoryItemRow; onClose: () => void }) {
   const [form, setForm] = useState({ typeId: item?.typeId ?? types[0]?.id ?? '', tag: item?.name ?? '', notes: item?.notes ?? '' });
   const [error, setError] = useState<unknown>(null);
-  const save = useInventoryMutation((body: unknown) => (item ? apiSend('PUT', `/api/items/${item.id}`, body) : apiSend('POST', '/api/items', body)), onClose);
+  // A new item's barcode shows only once the server has saved it.
+  const [created, setCreated] = useState<{ name: string; assetTag: string } | null>(null);
+  const save = useInventoryMutation(
+    (body: unknown) => (item ? apiSend<{ name: string; assetTag: string }>('PUT', `/api/items/${item.id}`, body) : apiSend<{ name: string; assetTag: string }>('POST', '/api/items', body)),
+    (saved) => (item ? onClose() : setCreated(saved)),
+  );
+  const parsedTag = itemInputSchema.safeParse(form);
+  const tagChanged = Boolean(item) && parsedTag.success && parsedTag.data.assetTag.toLowerCase() !== item!.assetTag.toLowerCase();
+  if (created) {
+    return (
+      <Dialog title={`Added ${created.name}`} onClose={onClose}>
+        <BarcodeCard code={created.assetTag} />
+        <div className="actions">
+          <button type="button" className="btn primary" onClick={onClose}>
+            Done
+          </button>
+        </div>
+      </Dialog>
+    );
+  }
   function submit(e: FormEvent) {
     e.preventDefault();
     const parsed = itemInputSchema.safeParse(form);
@@ -218,6 +238,7 @@ function ItemForm({ types, item, onClose }: { types: ItemTypeRow[]; item?: Inven
         <Field label="Tag" hint="No spaces, e.g. SAACLAPTOP942. Spaces you type are removed.">
           <input className="input" autoFocus value={form.tag} onChange={(e) => setForm({ ...form, tag: e.target.value })} />
         </Field>
+        {tagChanged && <p className="small secondary" role="status">A new tag means a new barcode. Print a new label for this item after saving.</p>}
         <Field label="Notes (optional)">
           <input className="input" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
         </Field>
@@ -238,10 +259,27 @@ function ItemForm({ types, item, onClose }: { types: ItemTypeRow[]; item?: Inven
 function BulkForm({ types, onClose }: { types: ItemTypeRow[]; onClose: () => void }) {
   const [form, setForm] = useState({ typeId: types[0]?.id ?? '', namePrefix: '', first: '', count: '' });
   const [error, setError] = useState<unknown>(null);
-  const save = useInventoryMutation((body: unknown) => apiSend('POST', '/api/items/bulk', body), onClose);
+  const [done, setDone] = useState<{ created: number; tags: string[] } | null>(null);
+  const save = useInventoryMutation((body: unknown) => apiSend<{ created: number; tags: string[] }>('POST', '/api/items/bulk', body), setDone);
   const parsed = itemBulkInputSchema.safeParse(form);
   const preview = parsed.success ? bulkItems(parsed.data) : [];
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setForm({ ...form, [k]: e.target.value });
+  if (done) {
+    return (
+      <Dialog title={`Added ${plural(done.created, 'item')}`} onClose={onClose}>
+        <p className="secondary num">
+          {done.tags[0]}
+          {done.tags.length > 1 ? ` to ${done.tags.at(-1)}` : ''}. Each item's barcode is also on its page, to download or print again.
+        </p>
+        <div className="actions">
+          <PrintAllBarcodes codes={done.tags} />
+          <button type="button" className="btn primary" onClick={onClose}>
+            Done
+          </button>
+        </div>
+      </Dialog>
+    );
+  }
   return (
     <Dialog title="Add several items" onClose={onClose}>
       <p className="secondary">For a numbered set, like SAACLAPTOP903 to SAACLAPTOP958.</p>

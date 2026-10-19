@@ -119,7 +119,7 @@ export class InventoryService {
   }
 
   /** Add a numbered run of items in one go. All or none: one taken tag stops the whole run. */
-  async createBulk(actorId: string, raw: unknown): Promise<{ created: number }> {
+  async createBulk(actorId: string, raw: unknown): Promise<{ created: number; tags: string[] }> {
     const input = itemBulkInputSchema.parse(raw);
     await this.checkType(input.typeId);
     const planned = bulkItems(input);
@@ -135,7 +135,7 @@ export class InventoryService {
         tx,
         planned.map((p, i) => ({ userId: actorId, action: 'item.create', entityType: 'Item', entityId: ids[i]!, after: { assetTag: p.assetTag, name: p.name, typeId: input.typeId } })),
       );
-      return { created: planned.length };
+      return { created: planned.length, tags: planned.map((p) => p.assetTag) };
     });
   }
 

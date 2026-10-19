@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import type { ItemHistory } from '@saac/shared';
 import { apiGet } from '../api/client';
+import { BarcodeCard } from '../components/Barcode';
 import { ItemStatePill } from '../components/ItemBits';
 import { PersonName } from '../components/PersonCard';
 import { HistoryTable } from '../components/ScanBox';
@@ -39,6 +40,10 @@ export function ItemPage() {
           <p className="secondary">Nobody. {h.state === 'AVAILABLE' ? 'It is on the shelf.' : ''}</p>
         )}
         {h.statusNote && <p className="small secondary">Note: {h.statusNote}</p>}
+      </section>
+      <section className="card">
+        <h2>Barcode</h2>
+        <BarcodeCard code={h.code} />
       </section>
       <section className="card">
         <h2>Checkouts</h2>

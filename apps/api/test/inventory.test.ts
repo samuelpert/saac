@@ -37,7 +37,7 @@ describe.skipIf(!hasDb)('inventory: tech items', () => {
     expect(res.status).toBe(409); // SAACLaptop942 already exists
     expect((await items('?q=SAAC')).length).toBe(1);
     const ok = await admin.post('/api/items/bulk').send({ typeId: laptops, namePrefix: 'SAAC Laptop', first: 1, count: 3 });
-    expect(ok.body).toEqual({ created: 3 });
+    expect(ok.body).toEqual({ created: 3, tags: ['SAACLaptop1', 'SAACLaptop2', 'SAACLaptop3'] });
     expect((await items('?q=SAAC Laptop')).map((i) => [i.assetTag, i.name]).sort()).toEqual([
       ['SAACLaptop1', 'SAACLaptop1'],
       ['SAACLaptop2', 'SAACLaptop2'],

@@ -61,6 +61,9 @@ export class ItemsService {
   async lookup(raw: string, now = new Date()): Promise<ItemMatch[]> {
     const q = raw.trim();
     if (q.length < 2) return [];
+    // A scanned barcode is a whole identifier: when one item has exactly that tag, show only it.
+    const exact = await this.db.item.findFirst({ where: { assetTag: { equals: q, mode: 'insensitive' } }, include: { type: true, ...openLoanInclude } });
+    if (exact) return [this.techMatch(exact, now)];
     const [items, copies] = await Promise.all([
       this.db.item.findMany({ where: techWhere(q), include: { type: true, ...openLoanInclude }, orderBy: { assetTag: 'asc' }, take: LOOKUP_LIMIT }),
       this.db.bookCopy.findMany({
@@ -82,6 +85,7 @@ export class ItemsService {
       id: i.id,
       kind: 'tech',
       tag: i.name,
+      code: i.assetTag,
       name: i.name,
       typeName: i.type.name,
       state,
@@ -101,6 +105,7 @@ export class ItemsService {
       id: c.id,
       kind: 'book',
       tag: c.copyTag,
+      code: c.copyTag,
       name: c.book.title,
       typeName: 'Book',
       state,

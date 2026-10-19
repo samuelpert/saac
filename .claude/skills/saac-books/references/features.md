@@ -132,15 +132,17 @@ Spec in `dashboard.md`.
 | K3 | Attention queue, admin only: everything that needs a human today, each row a link to the fix | P1 |
 | K4 | Staff home: the same without the attention queue, imports, system health, or user management. Recent activity is shown to staff too | P1 |
 
-## 2. The barcode step (pending)
+## 2. The barcode step (decided October 2026)
 
-The user is designing this. Until it is settled, build only the generic scan field (core rule 6) and pause label work in phases 2 and 4. Decide these together:
+The user's decisions:
 
-- What a label encodes: a plain tag number, the ISBN, or both. One label per copy and per tech item.
-- Label format and size, and which printer is available.
-- Scanner model and how it sends Enter.
-- How existing stock gets labeled. A good default is an intake screen: scan or type the ISBN, create the copy, print its label, which doubles as the inventory count.
-- What happens when a label is damaged or missing.
+- A barcode is Code 128 of the item's existing saved identifier: a tech item's tag (`SAACLAPTOP942`) or a book copy's tag (`C-00012`). There is no second identifier just for the barcode, and no new table or field.
+- Barcodes are drawn on demand in the browser with JsBarcode, never stored in PostgreSQL, and never fetched from an outside service. The same identifier always gives the same barcode.
+- After an item or copy is saved, its barcode shows with **Download Barcode** (SVG, with the identifier printed under the bars) and **Print Barcode**. A numbered run offers one print sheet with every new barcode. Each item's page shows its barcode again at any time. A tag or copy tag that a barcode cannot hold gives a clear message instead of a wrong barcode.
+- Changing a tag changes its barcode, so the edit form warns that a new label must be printed.
+- A USB or Bluetooth scanner in keyboard mode types the identifier and Enter into the scan field. An exact identifier finds only its own item. An unknown code shows "Barcode not recognized. Please try again." and never offers to register an item; scanning never creates or changes inventory.
+- Who may add items and download barcodes follows the existing rules: admins add items, and every signed-in user can open an item's page.
+- Still open: the label printer and sticker size, and the scanner model. Neither changes the code.
 
 ## 3. Phases and acceptance criteria
 
@@ -215,7 +217,7 @@ The user is designing this. Until it is settled, build only the generic scan fie
 
 - [ ] Phase 0: scaffold and host. Done: monorepo, schema and migrations, login and roles, idle sign-out, audit log, backup script, runbook draft. Open: Windows service and reboot test, HTTPS between computers, backup scheduling on the host, restore guide tested by someone else
 - [x] Phase 1: admin dashboard and people. Done October 2026: dashboard reviewed by the user, every phase 1 acceptance check passes. Added on request: term tags and eligibility, staff active switch, per-team scholarship workbook import, person card, item lookup and item history page
-- [x] Phase 2: inventory. Done October 2026 (labels wait for the barcode step): Inventory screen with Tech and Books tabs, admin only. Tech items are added one at a time or as a numbered run, edited, set in repair or surplus with a note, retired and restored, never deleted; an item that is out cannot change status or be retired until it is checked in. Book titles are added by hand or by ISBN lookup on Open Library (cached, offline falls back to typing); copies are added in bulk with numbered tags (C-00001...) or one with an existing label, edited, retired and restored. Item history shows status changes from the audit log
+- [x] Phase 2: inventory. Done October 2026, barcodes included: Inventory screen with Tech and Books tabs, admin only. Tech items are added one at a time or as a numbered run, edited, set in repair or surplus with a note, retired and restored, never deleted; an item that is out cannot change status or be retired until it is checked in. Book titles are added by hand or by ISBN lookup on Open Library (cached, offline falls back to typing); copies are added in bulk with numbered tags (C-00001...) or one with an existing label, edited, retired and restored. Item history shows status changes from the audit log
 - [ ] Phase 3: term books and needs
 - [ ] Phase 4: lend and return
 - [ ] Phase 5: lookups and reports
