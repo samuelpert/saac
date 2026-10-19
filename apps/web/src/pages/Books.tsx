@@ -3,7 +3,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { bookInputSchema, checkIsbn, COPY_CONDITIONS, type BookDetail, type CopyRow, type IsbnLookupResult } from '@saac/shared';
 import { apiGet, apiSend } from '../api/client';
-import { BarcodeCard, PrintAllBarcodes } from '../components/Barcode';
 import { ItemStatePill, TagLink } from '../components/ItemBits';
 import { PersonName } from '../components/PersonCard';
 import { Dialog, EmptyState, ErrorText, Feedback, Field, Loading, PageHead } from '../components/ui';
@@ -210,7 +209,7 @@ export function BookTitle() {
             <table className="table">
               <thead>
                 <tr>
-                  <th>Tag</th>
+                  <th>Copy</th>
                   <th>State</th>
                   <th>With</th>
                   <th>Condition</th>
@@ -293,36 +292,11 @@ function useBookMutation<T, R = unknown>(bookId: string, fn: (body: T) => Promis
 function AddCopies({ bookId, onClose }: { bookId: string; onClose: () => void }) {
   const [count, setCount] = useState('1');
   const [condition, setCondition] = useState<string>('New');
-  const [ownTag, setOwnTag] = useState('');
-  const [done, setDone] = useState<{ created: number; tags: string[] } | null>(null);
-  const save = useBookMutation(
-    bookId,
-    () => apiSend<{ created: number; tags: string[] }>('POST', `/api/books/${bookId}/copies`, { count: Number(count), condition, ...(ownTag.trim() ? { copyTag: ownTag } : {}) }),
-    setDone,
-  );
+  const save = useBookMutation(bookId, () => apiSend('POST', `/api/books/${bookId}/copies`, { count: Number(count), condition }), onClose);
   const n = Number(count) || 0;
-  if (done) {
-    return (
-      <Dialog title={`Added ${plural(done.created, 'copy', 'copies')}`} onClose={onClose}>
-        {done.tags.length === 1 ? (
-          <BarcodeCard code={done.tags[0]!} />
-        ) : (
-          <p className="secondary num">
-            {done.tags[0]} to {done.tags.at(-1)}. Each copy's barcode is also on its page, to download or print again.
-          </p>
-        )}
-        <div className="actions">
-          {done.tags.length > 1 && <PrintAllBarcodes codes={done.tags} />}
-          <button type="button" className="btn primary" onClick={onClose}>
-            Done
-          </button>
-        </div>
-      </Dialog>
-    );
-  }
   return (
     <Dialog title="Add copies" onClose={onClose}>
-      <p className="secondary">Each copy is its own record. Tags are numbered for you (C-00001, C-00002, …) unless the copy already has a label.</p>
+      <p className="secondary">Books need no labels: at the desk a copy is found by the ISBN barcode on its cover. Each copy is still counted on its own, so the app knows how many are on the shelf.</p>
       <div className="grid-2" style={{ gridTemplateColumns: '1fr 1fr' }}>
         <Field label="How many">
           <input className="input num" inputMode="numeric" autoFocus value={count} onChange={(e) => setCount(e.target.value)} />
@@ -335,11 +309,6 @@ function AddCopies({ bookId, onClose }: { bookId: string; onClose: () => void })
           </select>
         </Field>
       </div>
-      {n === 1 && (
-        <Field label="Existing label (optional)" hint="Only if this copy already has a tag on it">
-          <input className="input num" value={ownTag} onChange={(e) => setOwnTag(e.target.value)} />
-        </Field>
-      )}
       <ErrorText error={save.error} />
       <div className="actions">
         <button type="button" className="btn" onClick={onClose}>

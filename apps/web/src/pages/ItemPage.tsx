@@ -41,10 +41,12 @@ export function ItemPage() {
         )}
         {h.statusNote && <p className="small secondary">Note: {h.statusNote}</p>}
       </section>
-      <section className="card">
-        <h2>Barcode</h2>
-        <BarcodeCard code={h.code} />
-      </section>
+      {h.kind === 'tech' && (
+        <section className="card">
+          <h2>Barcode</h2>
+          <BarcodeCard code={h.code} />
+        </section>
+      )}
       <section className="card">
         <h2>Checkouts</h2>
         {h.loans.length === 0 ? <EmptyState>Never checked out.</EmptyState> : <HistoryTable loans={h.loans} />}

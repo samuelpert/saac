@@ -458,7 +458,7 @@ A second migration, `default_sport_mapping`, inserts the 16 teams and the defaul
 - `User.username` is the login, and an admin creates every account with a temporary password and `mustChangePassword` set. There is no sign-up, and `email` is optional.
 - No price fields exist. A charge, if one is ever needed, is `Escalation.chargeAmount`.
 - Student classes (`Enrollment`) depend on open question 1, so the entity may change shape once the source of class lists is known.
-- Tag formats for `copyTag` and `assetTag` wait for the barcode step.
+- Barcodes (October 2026): a tech item's barcode is Code 128 of its `assetTag`. Books carry no labels: `copyTag` is an internal copy number (C-00001...) that is never printed, and a book is scanned by the ISBN on its cover, which finds the `Book`.
 - `BookNeed` is one title for one person in one term. `ASSIGNED` reserves one copy, `ISSUED` means a loan exists, `WAIVED` and `CANCELLED` close it. "Short" is derived: a `NEEDED` row whose title has no available copy.
 - A copy is available when it is not retired, has no open loan, and has no `ASSIGNED` need. A copy assigned to person A must not be checked out to person B, so the checkout service checks this inside its transaction.
 - `IsbnLookup` (migration `inventory`) caches Open Library answers by ISBN, so a title looked up once fills in again with no network. Only found answers are cached. The same migration adds the item types Laptops, Chargers and Other tech.

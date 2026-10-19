@@ -47,6 +47,16 @@ describe.skipIf(!hasDb)('item lookup and history', () => {
     expect(await lookup('NOSUCHTAG99')).toEqual([]);
   });
 
+  it('finds a book title by the ISBN on its cover, for any signed-in user', async () => {
+    const res = await desk.get('/api/items/isbn/0-306-40615-2'); // the ISBN-10 of the same book
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ title: 'Fake Book', isbn: '9780306406157', counts: { total: 1, available: 1, out: 0 } });
+    const unknown = await desk.get('/api/items/isbn/9780131103627');
+    expect(unknown.status).toBe(404);
+    expect(unknown.body.message).toBe('Barcode not recognized. Please try again.');
+    expect((await desk.get('/api/items/isbn/12345')).status).toBe(400);
+  });
+
   it('derives the state: in repair, retired, available', async () => {
     expect((await lookup('charger 941'))[0]).toMatchObject({ state: 'IN_REPAIR', holder: null });
     expect((await lookup('L-0100'))[0]).toMatchObject({ state: 'RETIRED' });

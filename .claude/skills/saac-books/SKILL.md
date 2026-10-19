@@ -164,7 +164,7 @@ Do not guess these. Ask the user, and move the answer to Settled when it is know
 - The hold list is ready the day after the term's return deadline, with grace days defaulting to 0.
 - Scholarship is a yes/no field on the person. There is no separate do-not-borrow list.
 - No book or tech prices are stored in the catalog.
-- SAAC keeps an inventory of its own books, one record per physical copy, with barcodes. Details come in the barcode step.
+- SAAC keeps an inventory of its own books, one record per physical copy so the app can count copies and know who has one. Books carry no labels: the ISBN barcode on the cover is how a book is scanned (user decision, October 2026). A book with no ISBN barcode is the rare exception and gets a printed label.
 - Every term the book list is imported and books are assigned to students by need.
 - The admin dashboard is built first.
 - The student import columns are the ones in `assets/students.sample.xlsx`. CSV works as well as Excel.

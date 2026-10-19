@@ -30,7 +30,7 @@ One screen that answers "is everything okay, and what needs me today?" It is the
 +---------------------------------------------------------------+
 ```
 
-Home is first a search: a Panther ID or name shows the student and everything they hold now, books and tech, with Check out and Check in next to it; a tech tag or name ("L-0942", "laptop 942") or a book copy tag shows who has the item and its latest history, with a link to the full item history page. No quick-action buttons: the sidebar has them. The layout must fit a 1366 by 768 screen without scrolling the tiles off view.
+Home is first a search: a Panther ID or name shows the student and everything they hold now, books and tech, with Check out and Check in next to it; a tech tag ("SAACLAPTOP942") shows who has the item and its latest history, with a link to the full item history page; a book's ISBN shows the title, how many copies are on the shelf, and who has the others. No quick-action buttons: the sidebar has them. The layout must fit a 1366 by 768 screen without scrolling the tiles off view.
 
 Styling follows `design.md`: white cards with continuous 20 px corners on a light gray page, a FIU Blue sidebar, and gold used only as a thin accent. See section 8 of that file for the dashboard specifics.
 

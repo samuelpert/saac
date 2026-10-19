@@ -52,16 +52,16 @@ Rules:
 - Scope is one person, one team, or the whole term. Staff pick the scope, so staff decide who goes first when copies are short (open question 7).
 - For each `NEEDED` need in scope, take any available copy of that title. A copy is available when it is not retired, has no open loan, and is not assigned.
 - If no copy is available the need stays `NEEDED` and shows as short.
-- Show a preview first: each need with its copy tag, and the short ones. Commit in one transaction.
+- Show a preview first: each need with its title, and the short ones. Commit in one transaction.
 - The database allows only one active assignment per copy. If two staff assign at the same moment, the loser retries with another copy.
 - Staff can release a copy or reassign it to another need. Cancelling a need releases its copy.
 - Assign is repeatable. Run it again after new copies arrive or books come back.
-- Assigning does not create a loan. The loan is created when the copy is scanned at checkout, and it marks the need `ISSUED`. A copy assigned to one person cannot be checked out to another.
+- Assigning does not create a loan. The loan is created when the book's ISBN is scanned at checkout, using the copy reserved for that person, and it marks the need `ISSUED`. A copy assigned to one person cannot be checked out to another.
 - An assignment not picked up after a number of days shows on the dashboard. The number of days is a setting with no default until the supervisor decides.
 
 ## 6. Pull list and shortage report
 
-- Pull list: grouped by team, then person. Each row has the person, title, ISBN, copy tag, and status. Printable, with a checkbox per row.
+- Pull list: grouped by team, then person. Each row has the person, title, ISBN, and status. Printable, with a checkbox per row.
 - Shortage report: per title, the number of people who need it, copies owned, copies available, and the shortfall. Export to Excel. The order quantity is the shortfall.
 
 ## 7. Still unknown

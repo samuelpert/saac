@@ -22,7 +22,7 @@ Priority: P1 is needed at go-live, P2 soon after, P3 later.
 | --- | --- | --- |
 | B1 | Tech items: type, name or number, asset tag, status (available, checked out, in repair, surplus), retire without losing history | P1 |
 | B2 | Book titles, admin only: from the bookstore list, manual add and edit, Open Library lookup by ISBN to fill gaps (cached, works offline) | P1 |
-| B3 | Book copies: every physical book SAAC owns is its own record, so the app knows which copy is out. Admins add and retire copies. Whether staff may also use an intake screen is decided in the barcode step | P1 |
+| B3 | Book copies: every physical book SAAC owns is its own record, counted per title, so the app knows how many are on the shelf and who has one. Copies carry no labels; the ISBN on the cover identifies the title at the desk. Admins add and retire copies | P1 |
 | B4 | Inventory screens: copies per title, condition, status, who holds each | P2 |
 | B5 | Print labels for items and copies. Design is pending, see section 2 | P1 |
 | B6 | Tech status: an admin sets In repair or Surplus with a note, such as a broken screen. Both block checkout, and an item that is out must be checked in first. Available and Checked out are derived from loans, never set by hand | P1 |
@@ -38,14 +38,14 @@ Spec in `term-books.md`.
 | C3 | Class schedule per person per term. Quick manual entry (subject, catalog, section) and bulk import if a source exists. Source is open question 1 | P1 |
 | C4 | Needs: for each person and term, the titles they need (their classes times each class's titles, or straight from the list if it names students), minus what they already hold. Staff can add, waive, or cancel a need by hand | P1 |
 | C5 | Assign books: reserve an available copy for each need, by person, by team, or for the whole term. Preview first. Needs with no available copy show as short. Staff can reassign or release a copy | P1 |
-| C6 | Pull list: for one person or a whole team, the assigned copies to pull (title, copy tag), printable, feeds checkout | P1 |
+| C6 | Pull list: for one person or a whole team, the reserved titles to pull (title, ISBN, how many), printable, feeds checkout | P1 |
 | C7 | Shortage report: titles needed versus copies available, with the quantity to order from the bookstore | P2 |
 
 ### D. Lend
 
 | ID | Feature | P |
 | --- | --- | --- |
-| D1 | Book checkout: find the person, scan copies into a cart, review, check out. An assigned copy fulfils its need. All rows commit together or none | P1 |
+| D1 | Book checkout: find the person, scan each book's ISBN into a cart, review, check out. The app picks the copy reserved for that person, else any copy on the shelf. An assigned copy fulfils its need. All rows commit together or none | P1 |
 | D2 | Tech checkout: scan the item, record condition and comments such as a broken screen | P1 |
 | D3 | Book receipt (printed title `SAAC Book Receipt`), a PDF per person per term in the layout in `receipt.md`: books grouped by class, each line with transaction number, ISBN, item name, edition, bookstore checkbox, checked out and due dates, and two blanks on the left (received by student) and two on the right (returned to SAAC), then the agreement and signature lines. Kept on paper as the fallback if the system is down | P1 |
 | D4 | Tech agreement printout: the item filled in, condition and comments, signature line, no hand-filling. Use the existing paper agreement as the template | P1 |
@@ -56,7 +56,7 @@ Spec in `term-books.md`.
 
 | ID | Feature | P |
 | --- | --- | --- |
-| E1 | Check in by scan. Scanning an item or copy alone finds its open loan, no need to look up the person first | P1 |
+| E1 | Check in by scan. A tech tag alone finds its open loan. A book's ISBN finds the title; if more than one person has it, staff pick the person or scan their Panther ID first | P1 |
 | E2 | Condition and notes on return | P1 |
 | E3 | Not for return: close a loan without a return (kept, lost, bought out) with a reason | P1 |
 | E4 | Partial returns: some items on a receipt returned, the rest still out | P1 |
@@ -128,7 +128,7 @@ Spec in `dashboard.md`.
 | ID | Feature | P |
 | --- | --- | --- |
 | K1 | Admin home: tiles, attention queue, return progress by team, books this term, inventory health, recent activity, imports, system health | P1 |
-| K2 | One search box on Home: a PID or name shows the student and what they hold now; a tech tag or name, or a book copy tag, shows who has the item and its history. Scanned labels work the same way once the barcode step is done | P1 |
+| K2 | One search box on Home: a PID or name shows the student and what they hold now; a tech tag shows who has the item and its history; a book's ISBN shows the title, copies on the shelf and who has the others. Scanned barcodes work the same as typing | P1 |
 | K3 | Attention queue, admin only: everything that needs a human today, each row a link to the fix | P1 |
 | K4 | Staff home: the same without the attention queue, imports, system health, or user management. Recent activity is shown to staff too | P1 |
 
@@ -136,11 +136,12 @@ Spec in `dashboard.md`.
 
 The user's decisions:
 
-- A barcode is Code 128 of the item's existing saved identifier: a tech item's tag (`SAACLAPTOP942`) or a book copy's tag (`C-00012`). There is no second identifier just for the barcode, and no new table or field.
+- Tech items: a barcode is Code 128 of the item's existing saved tag (`SAACLAPTOP942`). There is no second identifier just for the barcode, and no new table or field.
+- Books: no labels. The ISBN barcode printed on the cover is scanned (EAN-13; an ISBN-10 is converted). An ISBN identifies the title, not the copy, so book loans are found by person and title. Copy records stay, counted per title, with internal numbers (C-00001) that are never printed.
 - Barcodes are drawn on demand in the browser with JsBarcode, never stored in PostgreSQL, and never fetched from an outside service. The same identifier always gives the same barcode.
-- After an item or copy is saved, its barcode shows with **Download Barcode** (SVG, with the identifier printed under the bars) and **Print Barcode**. A numbered run offers one print sheet with every new barcode. Each item's page shows its barcode again at any time. A tag or copy tag that a barcode cannot hold gives a clear message instead of a wrong barcode.
+- After a tech item is saved, its barcode shows with **Download Barcode** (SVG, with the identifier printed under the bars) and **Print Barcode**. A numbered run offers one print sheet with every new barcode. Each item's page shows its barcode again at any time. A tag or copy tag that a barcode cannot hold gives a clear message instead of a wrong barcode.
 - Changing a tag changes its barcode, so the edit form warns that a new label must be printed.
-- A USB or Bluetooth scanner in keyboard mode types the identifier and Enter into the scan field. An exact identifier finds only its own item. An unknown code shows "Barcode not recognized. Please try again." and never offers to register an item; scanning never creates or changes inventory.
+- A USB or Bluetooth scanner in keyboard mode types the identifier and Enter into the scan field. An exact tech tag finds only its own item; an ISBN finds its title. An unknown code shows "Barcode not recognized. Please try again." and never offers to register an item; scanning never creates or changes inventory.
 - Who may add items and download barcodes follows the existing rules: admins add items, and every signed-in user can open an item's page.
 - Still open: the label printer and sticker size, and the scanner model. Neither changes the code.
 
@@ -180,7 +181,7 @@ The user's decisions:
 - The pull list shows exactly the assigned copies.
 
 **Phase 4: lend and return**
-- A scanned copy or item is added to the cart in under a second.
+- A scanned ISBN or tech tag is added to the cart in under a second.
 - A copy or item that is already out cannot be checked out again, and the message says who has it.
 - A copy assigned to one person cannot be checked out to another.
 - Checking out an assigned copy marks its need issued.

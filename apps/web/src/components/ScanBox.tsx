@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import type { BorrowerDetail, BorrowerSummary, ItemHistory, ItemMatch, SearchResponse } from '@saac/shared';
-import { apiGet } from '../api/client';
+import { checkIsbn, type BookDetail, type BorrowerDetail, type BorrowerSummary, type ItemHistory, type ItemMatch, type SearchResponse } from '@saac/shared';
+import { ApiError, apiGet } from '../api/client';
 import { useIsAdmin } from '../auth/AuthContext';
 import { beep } from '../lib/beep';
 import { fmtDate } from '../lib/format';
@@ -11,15 +11,15 @@ import { ItemStatePill, TagLink } from './ItemBits';
 import { CopyButton, PersonName } from './PersonCard';
 import { EligibilityPill, EmptyState, Feedback, Glyph, type FeedbackMessage } from './ui';
 
-type Selected = { kind: 'person'; id: string } | { kind: 'item'; item: ItemMatch } | null;
+type Selected = { kind: 'person'; id: string } | { kind: 'item'; item: ItemMatch } | { kind: 'title'; book: BookDetail } | null;
 
 /** What a scanned label looks like: one word of letters and digits, such as SAACLAPTOP942 or C-00012. */
 const looksLikeBarcode = (q: string) => /^[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(q) && /\d/.test(q) && /[A-Za-z]/.test(q);
 
 /**
  * The one search on Home. A Panther ID or a name finds a student and shows what they hold.
- * A tech tag ("SAACLAPTOP942", "laptop942") or a book copy tag finds the item and shows
- * who has it and its history. A barcode scanner types like a keyboard and presses Enter,
+ * A tech tag ("SAACLAPTOP942", "laptop942") finds the item and shows who has it and its history.
+ * A book's ISBN barcode finds the title, how many copies are on the shelf, and who has the rest. A barcode scanner types like a keyboard and presses Enter,
  * so Enter submits, feedback shows at once, and focus stays in the field.
  */
 export function ScanBox({ term }: { term?: string }) {
@@ -44,6 +44,23 @@ export function ScanBox({ term }: { term?: string }) {
     const q = raw.trim();
     clear();
     if (!q) return;
+    // Books carry no labels: the ISBN on the cover is their barcode. It is never a Panther ID (7 digits).
+    const isbn = checkIsbn(q);
+    if (isbn.ok) {
+      try {
+        const book = await apiGet<BookDetail>(`/api/items/isbn/${isbn.isbn}`);
+        setSelected({ kind: 'title', book });
+        beep('ok');
+      } catch (e) {
+        setFb(
+          e instanceof ApiError && e.status === 404
+            ? { tone: 'err', word: 'Not found', text: 'Barcode not recognized. Please try again.' }
+            : { tone: 'err', word: 'Search failed', text: 'The server did not answer. Try again.' },
+        );
+        beep('err');
+      }
+      return;
+    }
     const termQs = term ? `&term=${term}` : '';
     let r: SearchResponse;
     let found: ItemMatch[];
@@ -120,7 +137,7 @@ export function ScanBox({ term }: { term?: string }) {
           ref={ref}
           value={value}
           aria-label="Search students and items"
-          placeholder="Type a Panther ID, a name, or a tech tag, then press Enter"
+          placeholder="Scan or type a Panther ID, a name, a tech tag or a book's ISBN, then press Enter"
           autoComplete="off"
           spellCheck={false}
           onChange={(e) => setValue(e.target.value)}
@@ -168,9 +185,71 @@ export function ScanBox({ term }: { term?: string }) {
           )}
           {selected?.kind === 'person' && <PersonPanel id={selected.id} />}
           {selected?.kind === 'item' && <ItemPanel item={selected.item} />}
+          {selected?.kind === 'title' && <TitlePanel book={selected.book} />}
         </div>
       )}
     </>
+  );
+}
+
+/** A book title found by its ISBN: copies on the shelf and who has the others. */
+function TitlePanel({ book }: { book: BookDetail }) {
+  const isAdmin = useIsAdmin();
+  const c = book.counts;
+  const out = book.copies.filter((cp) => cp.holder);
+  return (
+    <section className="card" aria-label="Book">
+      <div className="card-head">
+        <div className="stack" style={{ gap: 2 }}>
+          <h2>{book.title}</h2>
+          <span className="row small secondary" style={{ gap: 'var(--space-2)' }}>
+            {book.author && <span>{book.author} ·</span>}
+            <span className="num">ISBN {book.isbn}</span>
+          </span>
+        </div>
+        {isAdmin && <Link to={`/admin/inventory/books/${book.id}`}>Open title ›</Link>}
+      </div>
+      <div className="row" style={{ gap: 6 }}>
+        <span className={`pill lg num${c.available === 0 ? ' warn' : ' ok'}`}>{c.available} on the shelf</span>
+        <span className="pill lg num">{c.out} out</span>
+        {c.assigned > 0 && <span className="pill lg num">{c.assigned} reserved</span>}
+        <span className="pill lg num">{c.total - c.retired} copies in all</span>
+      </div>
+      {out.length === 0 ? (
+        <EmptyState>Nobody has a copy right now.</EmptyState>
+      ) : (
+        <div className="table-wrap">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Who has a copy</th>
+                <th>Panther ID</th>
+                <th>Due</th>
+              </tr>
+            </thead>
+            <tbody>
+              {out.map((cp) => (
+                <tr key={cp.id}>
+                  <td>
+                    <PersonName person={cp.holder!} />
+                  </td>
+                  <td className="pid">{cp.holder!.pid}</td>
+                  <td className="num">
+                    {cp.pastDue ? (
+                      <span className="pill err">
+                        <Glyph tone="warn" small /> Past due · {fmtDate(cp.dueDate!, { month: 'short', day: 'numeric' })}
+                      </span>
+                    ) : (
+                      fmtDate(cp.dueDate!, { month: 'short', day: 'numeric' })
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
   );
 }
 

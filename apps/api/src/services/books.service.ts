@@ -110,6 +110,13 @@ export class BooksService {
     };
   }
 
+  /** A title found by the ISBN barcode on its cover. Books carry no labels of their own. */
+  async byIsbn(raw: string): Promise<BookDetail> {
+    const book = await this.db.book.findUnique({ where: { isbn: requireIsbn(raw) }, select: { id: true } });
+    if (!book) throw notFound('Barcode not recognized. Please try again.');
+    return this.detail(book.id);
+  }
+
   async detail(id: string, now = new Date()): Promise<BookDetail> {
     const b = await this.db.book.findUnique({
       where: { id },
